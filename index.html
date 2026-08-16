@@ -1,0 +1,1457 @@
+<title>Vivarium Atlas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+/* ============================ TOKENS ============================ */
+:root{
+  --ground:#eef2f1; --panel:#ffffff; --panel-2:#e7edeb; --panel-3:#dde6e3;
+  --line:#cdd9d6; --line-2:#dde6e3;
+  --ink:#0e1c20; --muted:#526468; --faint:#7a8d90;
+  --wire:#0b8d7d; --wire-2:#0a6f63; --wire-glow:#12b09a;
+  --living:#d15c3c; --living-2:#b64a2d;
+  --grid:rgba(14,28,32,.055);
+  --shadow:0 1px 2px rgba(14,28,32,.06),0 8px 30px rgba(14,28,32,.06);
+  --shadow-lg:0 20px 60px rgba(14,28,32,.14);
+  /* scale bands (molecular -> spatial) */
+  --b-mol:#7a5cf0; --b-rxn:#2f6bd6; --b-flux:#0b9d8c; --b-cell:#2f9a44; --b-multi:#d98029; --b-util:#8b8390;
+  --b-mol-bg:rgba(122,92,240,.12); --b-rxn-bg:rgba(47,107,214,.12); --b-flux-bg:rgba(11,157,140,.12);
+  --b-cell-bg:rgba(47,154,68,.12); --b-multi-bg:rgba(217,128,41,.12); --b-util-bg:rgba(139,131,144,.12);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --maxw:1500px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#091316; --panel:#0f1e22; --panel-2:#132428; --panel-3:#183036;
+    --line:#213a3f; --line-2:#1a3035;
+    --ink:#e8f1ef; --muted:#93a8ab; --faint:#6c8286;
+    --wire:#3fd6bd; --wire-2:#2fbfa8; --wire-glow:#63f0d6;
+    --living:#ff8a63; --living-2:#ff7048;
+    --grid:rgba(120,210,196,.055);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 34px rgba(0,0,0,.35);
+    --shadow-lg:0 24px 70px rgba(0,0,0,.55);
+    --b-mol:#9c85ff; --b-rxn:#5b93f0; --b-flux:#2fd6bd; --b-cell:#54d06a; --b-multi:#f0a24a; --b-util:#a89fae;
+    --b-mol-bg:rgba(156,133,255,.15); --b-rxn-bg:rgba(91,147,240,.15); --b-flux-bg:rgba(47,214,189,.15);
+    --b-cell-bg:rgba(84,208,106,.15); --b-multi-bg:rgba(240,162,74,.15); --b-util-bg:rgba(168,159,174,.15);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#091316; --panel:#0f1e22; --panel-2:#132428; --panel-3:#183036;
+  --line:#213a3f; --line-2:#1a3035;
+  --ink:#e8f1ef; --muted:#93a8ab; --faint:#6c8286;
+  --wire:#3fd6bd; --wire-2:#2fbfa8; --wire-glow:#63f0d6;
+  --living:#ff8a63; --living-2:#ff7048;
+  --grid:rgba(120,210,196,.055);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 34px rgba(0,0,0,.35);
+  --shadow-lg:0 24px 70px rgba(0,0,0,.55);
+  --b-mol:#9c85ff; --b-rxn:#5b93f0; --b-flux:#2fd6bd; --b-cell:#54d06a; --b-multi:#f0a24a; --b-util:#a89fae;
+  --b-mol-bg:rgba(156,133,255,.15); --b-rxn-bg:rgba(91,147,240,.15); --b-flux-bg:rgba(47,214,189,.15);
+  --b-cell-bg:rgba(47,214,106,.15); --b-multi-bg:rgba(240,162,74,.15); --b-util-bg:rgba(168,159,174,.15);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(var(--grid) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+a{color:var(--wire-2);text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.15;margin:0}
+code,kbd{font-family:var(--mono)}
+::selection{background:var(--wire);color:#fff}
+:focus-visible{outline:2px solid var(--wire);outline-offset:3px;border-radius:4px}
+
+/* ============================ LAYOUT ============================ */
+.shell{display:grid;grid-template-columns:288px minmax(0,1fr);max-width:var(--maxw);margin:0 auto;min-height:100vh}
+/* Sidebar */
+.side{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--line);
+  background:linear-gradient(180deg,var(--panel),var(--panel-2));padding:26px 20px 40px;z-index:40}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+.brand .glyph{width:38px;height:38px;flex:0 0 38px}
+.brand h1{font-size:19px;letter-spacing:-.01em;font-weight:700}
+.brand .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+.nav{margin-top:26px;display:flex;flex-direction:column;gap:2px}
+.nav .grouplabel{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+  margin:18px 8px 6px;display:flex;align-items:center;gap:7px}
+.nav .grouplabel::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--wire);box-shadow:0 0 0 3px var(--wire-glow,transparent)}
+.nav a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--muted);font-size:13.5px;
+  font-weight:500;position:relative;transition:background .15s,color .15s}
+.nav a .dot{width:6px;height:6px;border-radius:50%;background:var(--line);flex:0 0 6px;transition:background .15s,transform .15s}
+.nav a:hover{background:var(--panel-3);color:var(--ink);text-decoration:none}
+.nav a.active{background:var(--panel-3);color:var(--ink);font-weight:600}
+.nav a.active .dot{background:var(--wire);transform:scale(1.5);box-shadow:0 0 8px var(--wire-glow)}
+.side-foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--faint);line-height:1.5}
+
+/* Main */
+.main{min-width:0;padding:0 clamp(20px,4vw,64px) 120px}
+.topbar{position:sticky;top:0;display:flex;align-items:center;gap:14px;justify-content:flex-end;
+  padding:14px 0 12px;background:linear-gradient(180deg,var(--ground) 70%,transparent);z-index:30;backdrop-filter:blur(2px)}
+.menu-btn{display:none}
+.tgl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.tgl:hover{border-color:var(--wire);color:var(--ink)}
+
+/* Section scaffolding */
+section{scroll-margin-top:80px;padding:34px 0}
+section+section{border-top:1px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--wire-2);
+  display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.eyebrow::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--wire);box-shadow:0 0 10px var(--wire-glow)}
+h2.sec{font-size:clamp(26px,3.4vw,38px);letter-spacing:-.02em;font-weight:750;margin-bottom:10px}
+.lede{font-size:clamp(16px,1.7vw,19px);color:var(--muted);max-width:68ch;line-height:1.55}
+h3.sub{font-size:19px;font-weight:680;margin:30px 0 10px;letter-spacing:-.01em}
+p{max-width:70ch}
+.prose p{color:var(--muted)}
+.prose strong{color:var(--ink);font-weight:640}
+
+/* ============================ HERO ============================ */
+.hero{padding-top:20px}
+.hero-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center}
+.hero h2.big{font-size:clamp(34px,5.6vw,62px);line-height:1.02;letter-spacing:-.03em;font-weight:800;margin-bottom:20px}
+.hero h2.big em{font-style:normal;color:var(--wire-2);position:relative;white-space:nowrap}
+.hero .kick{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--living);margin-bottom:18px;display:flex;gap:10px;align-items:center}
+.hero .kick::before{content:"";width:26px;height:1px;background:var(--living)}
+.hero .lede{font-size:19px;max-width:52ch}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.btn{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;padding:11px 18px;border-radius:10px;cursor:pointer;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);font-weight:600;transition:.15s;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn.primary{background:var(--wire);border-color:var(--wire);color:#04201c}
+:root[data-theme="dark"] .btn.primary,@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.primary{color:#04201c}}
+.btn.primary:hover{background:var(--wire-glow)}
+.canvas-wrap{position:relative;aspect-ratio:1/.92;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+  background:radial-gradient(120% 120% at 30% 10%,var(--panel),var(--panel-2));box-shadow:var(--shadow-lg)}
+.canvas-wrap canvas{width:100%;height:100%;display:block}
+.canvas-cap{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);background:var(--panel);border:1px solid var(--line);padding:5px 9px;border-radius:7px}
+
+/* Stat strip */
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:44px;background:var(--panel)}
+.stat{padding:18px 16px;border-right:1px solid var(--line-2)}
+.stat:last-child{border-right:0}
+.stat b{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:-.02em;display:block;font-variant-numeric:tabular-nums;color:var(--ink)}
+.stat span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono)}
+
+/* ============================ CARDS / GRID ============================ */
+.cards{display:grid;gap:18px}
+.cols-2{grid-template-columns:repeat(2,1fr)}
+.cols-3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow);position:relative}
+.card h4{font-size:16.5px;font-weight:680;letter-spacing:-.01em;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+.card p{font-size:14px;color:var(--muted);margin:0}
+.card .pill{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.tag-pkg{font-family:var(--mono);font-size:11.5px;color:var(--wire-2);background:var(--panel-2);border:1px solid var(--line);
+  padding:2px 8px;border-radius:6px;display:inline-block}
+.card.corerepo{padding-top:24px}
+.card.corerepo .idx{position:absolute;top:16px;right:18px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+/* code blocks */
+.code{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:auto;margin:16px 0}
+.code pre{margin:0;padding:16px 18px;font-family:var(--mono);font-size:12.8px;line-height:1.7;color:var(--ink)}
+.code .cm{color:var(--faint)}
+.code .kw{color:var(--living)}
+.code .fn{color:var(--wire-2)}
+.code .st{color:var(--b-cell)}
+.code-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  padding:9px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+
+/* ============================ INTERACTIVE: STEPPER ============================ */
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow);margin-top:22px}
+.lab-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.lab-tag{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:var(--living);
+  padding:3px 8px;border-radius:5px;font-weight:600}
+.lab h4{font-size:16px;font-weight:680}
+.stepper{display:grid;grid-template-columns:1fr 1.1fr;gap:22px;margin-top:16px;align-items:center}
+.step-diagram{position:relative;min-height:210px}
+.step-diagram svg{width:100%;height:auto;display:block;overflow:visible}
+.node-proc{fill:var(--panel-2);stroke:var(--wire);stroke-width:2}
+.node-store{fill:var(--panel-3);stroke:var(--b-cell);stroke-width:2}
+.wire{stroke:var(--wire);stroke-width:2;fill:none;opacity:.55}
+.port{fill:var(--wire)}
+.port-in{fill:var(--b-cell)}
+.nlabel{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.nsub{font-family:var(--mono);font-size:9px;fill:var(--faint)}
+.step-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.readout{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:var(--mono);font-size:12.5px;margin-top:14px;align-items:center}
+.readout .k{color:var(--faint)}
+.readout .v{color:var(--ink);font-variant-numeric:tabular-nums}
+.plot-wrap{border:1px solid var(--line);border-radius:10px;background:var(--panel-2);padding:10px}
+.plot-wrap canvas{width:100%;height:170px;display:block}
+.delta-flash{color:var(--wire-2)!important;transition:none}
+
+/* ============================ SCALE LADDER ============================ */
+.ladder{display:flex;flex-direction:column;gap:8px;margin-top:22px}
+.rung{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:center;border:1px solid var(--line);
+  border-radius:12px;background:var(--panel);padding:14px 16px;position:relative;overflow:hidden}
+.rung::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bc)}
+.rung .scale-name{font-weight:680;font-size:15px;display:flex;flex-direction:column;gap:3px;padding-left:8px}
+.rung .scale-name span{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--faint);text-transform:uppercase;font-weight:500}
+.rung .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--bcbg);color:var(--bc);
+  border:1px solid transparent;cursor:pointer;transition:.12s;font-weight:600}
+.chip:hover{border-color:var(--bc)}
+
+/* ============================ LIFECYCLE ============================ */
+.pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:22px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.phase{padding:0;border-right:1px solid var(--line-2);cursor:pointer;transition:background .15s;position:relative}
+.phase:last-child{border-right:0}
+.phase .ph-top{padding:15px 15px 12px;border-bottom:2px solid transparent}
+.phase.active .ph-top{border-bottom-color:var(--wire);background:var(--panel-2)}
+.phase:hover .ph-top{background:var(--panel-2)}
+.phase .num{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.phase .pname{font-weight:700;font-size:15px;margin-top:2px}
+.phase .parrow{color:var(--faint);font-size:11px;margin-top:4px;font-family:var(--mono)}
+.phase-detail{padding:20px 22px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;background:var(--panel);margin-top:-1px}
+.phase-detail h4{font-size:16px;margin-bottom:4px}
+.phase-detail .produces{font-family:var(--mono);font-size:12px;color:var(--wire-2);margin-bottom:10px}
+.phase-detail .skills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.skilltag{font-family:var(--mono);font-size:11px;background:var(--panel-2);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--muted)}
+
+/* ============================ CATALOG ============================ */
+.catbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:22px 0 14px}
+.search{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px}
+.search input{border:0;background:transparent;outline:none;color:var(--ink);font-size:14px;width:100%;font-family:var(--sans)}
+.search svg{flex:0 0 16px;stroke:var(--faint)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filt{font-family:var(--mono);font-size:11.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);
+  color:var(--muted);cursor:pointer;transition:.12s;font-weight:600;display:flex;align-items:center;gap:6px}
+.filt .swatch{width:8px;height:8px;border-radius:50%}
+.filt:hover{color:var(--ink)}
+.filt.on{color:var(--ink);border-color:currentColor}
+.filt.on[data-band]{background:var(--fbg,var(--panel-2))}
+.catgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.repo{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0;box-shadow:var(--shadow);cursor:pointer;
+  overflow:hidden;transition:transform .14s,border-color .14s;display:flex;flex-direction:column;text-align:left}
+.repo:hover{transform:translateY(-3px);border-color:var(--bc)}
+.repo .rtop{padding:16px 18px 12px;border-left:4px solid var(--bc)}
+.repo .rname{font-weight:700;font-size:15.5px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.repo .rband{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--bc);font-weight:700;margin-top:3px}
+.repo .rdesc{font-size:13px;color:var(--muted);margin-top:9px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.repo .rfoot{margin-top:auto;display:flex;gap:12px;padding:11px 18px;border-top:1px solid var(--line-2);background:var(--panel-2);
+  font-family:var(--mono);font-size:11px;color:var(--muted);flex-wrap:wrap}
+.repo .rfoot b{color:var(--ink);font-weight:700}
+.repo .rfoot .z{opacity:.4}
+.catcount{font-family:var(--mono);font-size:12px;color:var(--faint);margin-left:auto}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px}
+.modal.open{display:flex}
+.modal-bg{position:absolute;inset:0;background:rgba(6,14,16,.55);backdrop-filter:blur(4px)}
+.modal-card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:720px;width:100%;
+  max-height:86vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-head{padding:24px 26px 18px;border-bottom:1px solid var(--line);border-left:6px solid var(--bc);position:sticky;top:0;background:var(--panel);z-index:2}
+.modal-head .rband{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--bc);font-weight:700}
+.modal-head h3{font-size:23px;font-weight:750;letter-spacing:-.01em;margin:5px 0 8px}
+.modal-head p{font-size:14.5px;color:var(--muted);margin:0}
+.modal-close{position:absolute;top:18px;right:20px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+.modal-body{padding:22px 26px 28px}
+.artgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.artbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel-2)}
+.artbox .n{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.artbox .l{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.artlist h5{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--wire-2);margin:16px 0 8px;font-weight:600}
+.artlist .items{display:flex;flex-wrap:wrap;gap:6px}
+.artlist .items span{font-family:var(--mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--muted)}
+.modal-foot{padding:14px 26px 22px}
+
+/* glossary */
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:0 40px;margin-top:20px}
+.gterm{padding:16px 0;border-top:1px solid var(--line-2)}
+.gterm dt{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--wire-2);margin-bottom:5px}
+.gterm dd{margin:0;font-size:13.5px;color:var(--muted);line-height:1.55}
+
+/* callout */
+.callout{border:1px solid var(--line);border-left:4px solid var(--living);background:var(--panel);border-radius:0 12px 12px 0;padding:16px 20px;margin:20px 0;font-size:14.5px;color:var(--muted)}
+.callout strong{color:var(--ink)}
+
+.foot{padding:40px 0 10px;color:var(--faint);font-size:12.5px;font-family:var(--mono);line-height:1.7}
+.foot a{color:var(--muted)}
+
+/* ============================ RESPONSIVE ============================ */
+@media (max-width:1080px){
+  .hero-grid{grid-template-columns:1fr;gap:28px}
+  .stepper{grid-template-columns:1fr}
+  .cols-3{grid-template-columns:repeat(2,1fr)}
+  .gloss{grid-template-columns:1fr}
+}
+@media (max-width:840px){
+  .shell{grid-template-columns:1fr}
+  .side{position:fixed;left:0;top:0;bottom:0;width:280px;transform:translateX(-100%);transition:transform .22s;box-shadow:var(--shadow-lg)}
+  .side.open{transform:none}
+  .menu-btn{display:inline-flex;margin-right:auto}
+  .topbar{justify-content:flex-start}
+  .cols-2,.cols-3{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .stat:nth-child(3){border-right:0}
+  .pipe{grid-template-columns:1fr;border-radius:14px}
+  .phase{border-right:0;border-bottom:1px solid var(--line-2)}
+  .phase.active .ph-top{border-bottom-color:var(--line-2)}
+  .phase-detail{border-radius:0 0 14px 14px}
+  .rung{grid-template-columns:1fr;gap:10px}
+  .scrim{display:none}
+  .scrim.open{display:block;position:fixed;inset:0;background:rgba(6,14,16,.4);z-index:35}
+}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(3){border-right:1px solid var(--line-2)}}
+
+/* ============================ FORMALISM ============================ */
+.fx{font-family:var(--mono);font-size:.9em;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap;color:var(--wire-2)}
+.fx i,.tuple i{font-style:italic}
+.card .fxline{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);font-family:var(--mono);font-size:11px;color:var(--faint);display:flex;flex-wrap:wrap;gap:7px;align-items:center;line-height:1.5}
+.card .fxline code{color:var(--wire-2);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.card .fxline .sf{color:var(--living)}
+.tuple{font-family:var(--mono);font-size:clamp(18px,2.6vw,24px);text-align:center;background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:14px;padding:24px 20px;margin:22px 0;letter-spacing:.01em;color:var(--ink);box-shadow:var(--shadow)}
+.tuple b{color:var(--wire-2)} .tuple .lv{color:var(--living)}
+.tuple small{display:block;font-family:var(--sans);font-size:13.5px;color:var(--muted);margin-top:14px;letter-spacing:0;max-width:62ch;margin:14px auto 0;line-height:1.55}
+.rosetta-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin:22px 0;box-shadow:var(--shadow)}
+table.rosetta{border-collapse:collapse;width:100%;min-width:860px;font-size:13px}
+table.rosetta th{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);text-align:left;padding:12px 14px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+table.rosetta td{padding:11px 14px;border-bottom:1px solid var(--line-2);vertical-align:top;color:var(--muted);line-height:1.45}
+table.rosetta tr:last-child td{border-bottom:0}
+table.rosetta tbody tr:hover td{background:var(--panel-2)}
+table.rosetta .sym{font-family:var(--mono);color:var(--wire-2);white-space:nowrap;font-weight:600}
+table.rosetta .cls{font-family:var(--mono);font-size:12px;color:var(--ink)}
+table.rosetta .repo{font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--faint)}
+.repolink{font-family:var(--mono);font-size:11.5px;color:var(--living);background:none;border:0;padding:0;cursor:pointer;border-bottom:1px dotted var(--living)}
+.repolink:hover{color:var(--living-2);border-bottom-style:solid}
+table.rosetta .sf code{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11.5px;color:var(--wire-2)}
+/* Spatio-Flux progression */
+.sfprog{display:flex;flex-direction:column;margin:24px 0}
+.sfstep{display:grid;grid-template-columns:46px 1fr;gap:0 18px;padding:22px 0;border-top:1px solid var(--line-2)}
+.sfstep:first-child{border-top:0;padding-top:6px}
+.sfstep .sfn{font-family:var(--mono);font-size:12.5px;color:#fff;font-weight:700;background:var(--wire);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.sfstep h4{font-size:16.5px;font-weight:680;letter-spacing:-.01em;margin-bottom:7px}
+.sfstep p{font-size:14px;color:var(--muted);margin:0;max-width:72ch;line-height:1.55}
+.sfstep .cls-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.sfstep .cls-row span{font-family:var(--mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--wire-2)}
+.sfstep .cls-row .orch{color:var(--living);border-color:var(--living)}
+.sfstep .emerge{font-size:13.5px;color:var(--ink);border-left:3px solid var(--living);padding:2px 0 2px 12px;margin-top:12px;line-height:1.5}
+.sfstep .emerge b{color:var(--living)}
+
+/* ============================ MODAL ENRICHMENT ============================ */
+.enr h5,.artlist h5,.enr-arth{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--wire-2);margin:20px 0 10px;font-weight:600;display:flex;align-items:center;gap:8px}
+.enr h5::before,.enr-arth::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--wire);flex:0 0 6px}
+.enr .underlying{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);padding:7px 12px;border-radius:9px}
+.enr .underlying b{color:var(--ink)}
+.enr ul.concepts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.enr ul.concepts li{font-size:13.5px;color:var(--muted);padding-left:18px;position:relative;line-height:1.5}
+.enr ul.concepts li::before{content:"▸";position:absolute;left:0;top:0;color:var(--wire)}
+.enr ul.concepts b{color:var(--ink);font-family:var(--mono);font-size:12.5px;font-weight:600}
+.enr .ex{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel-2)}
+.enr .ex-t{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:8px 13px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.enr .ex pre{margin:0;padding:14px 15px;font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--ink);overflow-x:auto;white-space:pre}
+.enr .ex-note{font-size:12.5px;color:var(--muted);margin-top:9px;font-style:italic;line-height:1.5}
+.enr .rel{display:flex;flex-wrap:wrap;gap:8px}
+.enr .rel .relchip{font-family:var(--mono);font-size:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 11px;color:var(--muted);line-height:1.45;max-width:100%}
+.enr .rel .relchip.link{cursor:pointer;border-color:var(--wire)}
+.enr .rel .relchip.link b{color:var(--wire-2)}
+.enr .rel .relchip.link:hover{background:var(--wire);border-color:var(--wire)}
+.enr .rel .relchip.link:hover b,.enr .rel .relchip.link:hover{color:#04201c}
+.enr .rel .relchip b{color:var(--ink);font-weight:600}
+.card.corerepo.clickable{cursor:pointer;transition:transform .14s,border-color .14s}
+.card.corerepo.clickable:hover{transform:translateY(-3px);border-color:var(--wire)}
+.card.corerepo .more{position:absolute;bottom:16px;right:18px;font-family:var(--mono);font-size:10.5px;color:var(--wire-2);opacity:0;transition:opacity .14s}
+.card.corerepo.clickable:hover .more{opacity:1}
+
+/* ============================ TEMPLATE FILLER ============================ */
+.tmpl{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow);margin-top:22px}
+.tmpl-modes{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:4px}
+.tmpl-modes button{font-family:var(--mono);font-size:12px;padding:9px 17px;border:0;background:var(--panel);color:var(--muted);cursor:pointer;font-weight:600;transition:.14s}
+.tmpl-modes button+button{border-left:1px solid var(--line)}
+.tmpl-modes button.on{background:var(--wire);color:#04201c}
+.tmpl-stage{margin-top:16px}
+.tmpl-svg{width:100%;height:auto;display:block;overflow:visible}
+.tnode{fill:var(--panel-2);stroke:var(--wire);stroke-width:2}
+.tsite-open{fill:none;stroke:var(--faint);stroke-width:2;stroke-dasharray:6 5}
+.tsite-filled{fill:var(--panel-2);stroke:var(--living);stroke-width:2.4}
+.tres-open{fill:none;stroke:var(--faint);stroke-width:2;stroke-dasharray:5 4}
+.tres-filled{fill:var(--panel-3);stroke:var(--b-cell);stroke-width:2.4}
+.twire{stroke:var(--wire);stroke-width:2;fill:none;opacity:.6}
+.tlab{font-family:var(--mono);font-size:12.5px;fill:var(--ink);font-weight:600}
+.tsub{font-family:var(--mono);font-size:9.5px;fill:var(--faint)}
+.tport{fill:var(--wire)}
+.tmpl-ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.tmpl-ctrl select{font-family:var(--mono);font-size:12.5px;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.tmpl-ctrl label{font-family:var(--mono);font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em}
+.tmpl-narrate{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:16px;border-left:3px solid var(--wire);padding:7px 0 7px 13px;line-height:1.55}
+.tmpl-narrate b{color:var(--ink)} .tmpl-narrate .pull{color:var(--b-cell)} .tmpl-narrate .compute{color:var(--wire-2)} .tmpl-narrate .prune{color:var(--faint)}
+.members{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.member{border:1px solid var(--line);border-radius:11px;padding:11px 15px;cursor:pointer;background:var(--panel);min-width:158px;transition:.14s;text-align:left}
+.member:hover{border-color:var(--living)}
+.member .mname{font-family:var(--mono);font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center;color:var(--ink)}
+.member .mstate{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;margin-top:5px;color:var(--faint)}
+.member.filled{border-color:var(--living);background:var(--panel-2)}
+.member.target{box-shadow:inset 0 0 0 2px var(--living)}
+.member .box{width:12px;height:12px;border:1.6px solid var(--faint);border-radius:3px;display:inline-block;flex:0 0 12px}
+.member.filled .box{background:var(--living);border-color:var(--living)}
+.member .tgt{font-family:var(--mono);font-size:9px;color:var(--living);text-transform:uppercase;letter-spacing:.08em}
+.resolve{display:grid;grid-template-columns:max-content max-content 1fr;gap:7px 16px;font-family:var(--mono);font-size:12px;margin-top:18px;align-items:baseline}
+.resolve .rk{color:var(--ink);font-weight:700}
+.resolve .rt{font-weight:700;letter-spacing:.04em}
+.resolve .pull{color:var(--b-cell)} .resolve .compute{color:var(--wire-2)} .resolve .prune{color:var(--faint);opacity:.65}
+.resolve .rd{color:var(--muted)}
+</style>
+
+<div class="shell">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="side" id="side" aria-label="Section navigation">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="37" height="37" rx="9" stroke="var(--wire)" stroke-width="1.6" opacity=".5"/>
+        <circle cx="12" cy="13" r="4.4" fill="var(--panel)" stroke="var(--b-cell)" stroke-width="1.8"/>
+        <rect x="22" y="8.5" width="12" height="9" rx="2.4" fill="var(--panel)" stroke="var(--wire)" stroke-width="1.8"/>
+        <circle cx="14" cy="28" r="4.4" fill="var(--panel)" stroke="var(--living)" stroke-width="1.8"/>
+        <rect x="24" y="24" width="11" height="9" rx="2.4" fill="var(--panel)" stroke="var(--wire)" stroke-width="1.8"/>
+        <path d="M16.2 14.5 L22 12.5 M18 26 L24 28 M16 16 C 19 21, 21 22, 24 26" stroke="var(--wire)" stroke-width="1.5" opacity=".7"/>
+        <circle cx="20" cy="19" r="1.6" fill="var(--wire-glow)"/>
+      </svg>
+      <div>
+        <h1>Vivarium Atlas</h1>
+        <div class="sub">Process&nbsp;Bigraphs · v2.0</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="grouplabel">Foundations</div>
+      <a href="#top"><span class="dot"></span>Overview</a>
+      <a href="#model"><span class="dot"></span>The bigraph model</a>
+      <a href="#loop"><span class="dot"></span>The update loop</a>
+      <a href="#engine"><span class="dot"></span>Engine core</a>
+      <div class="grouplabel">Doing science</div>
+      <a href="#build"><span class="dot"></span>Wrap → Compose → Run</a>
+      <a href="#templates"><span class="dot"></span>Templates &amp; sites</a>
+      <a href="#studies"><span class="dot"></span>Studies &amp; tests</a>
+      <a href="#investigations"><span class="dot"></span>Investigations</a>
+      <a href="#workbench"><span class="dot"></span>Workbench &amp; skills</a>
+      <div class="grouplabel">The ecosystem</div>
+      <a href="#scales"><span class="dot"></span>Scale ladder</a>
+      <a href="#catalog"><span class="dot"></span>Simulator catalog</a>
+      <a href="#loom"><span class="dot"></span>Rendered by loom</a>
+      <a href="#spatioflux"><span class="dot"></span>Spatio-Flux example</a>
+      <a href="#flagship"><span class="dot"></span>Whole-cell E. coli</a>
+      <div class="grouplabel">Reference</div>
+      <a href="#glossary"><span class="dot"></span>Glossary</a>
+    </nav>
+    <div class="side-foot">
+      A living map of the <b>vivarium-collective</b> ecosystem — the engine, the tooling, and every wrapped simulator. Data drawn from the ecosystem registry.
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+    <div class="topbar">
+      <button class="btn menu-btn" id="menuBtn" aria-label="Open menu">☰ Menu</button>
+      <button class="tgl" id="themeBtn" aria-label="Toggle color theme"><span id="themeIcon">◐</span> <span id="themeTxt">Theme</span></button>
+    </div>
+
+    <!-- ---------- HERO ---------- -->
+    <section id="top" class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="kick">Compositional systems biology</div>
+          <h2 class="big">Wire living models together, <em>one process at a time.</em></h2>
+          <p class="lede">Vivarium 2.0 is built on <strong>process bigraphs</strong> — a protocol for snapping ODEs, flux models, particle simulators and whole-cell models into a single running whole. This atlas teaches the ideas, the engine, and every simulator the community has wrapped.</p>
+          <div class="hero-cta">
+            <a class="btn primary" href="#model">Start with the model →</a>
+            <a class="btn" href="#catalog">Browse the catalog</a>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="heroCanvas"></canvas>
+          <div class="canvas-cap">live: processes emitting typed deltas into shared stores</div>
+        </div>
+      </div>
+
+      <div class="stats" id="stats" aria-label="Ecosystem at a glance"></div>
+    </section>
+
+    <!-- ---------- MODEL ---------- -->
+    <section id="model" class="prose">
+      <div class="eyebrow">Foundations · 01</div>
+      <h2 class="sec">What is a process bigraph?</h2>
+      <p class="lede">A bigraph, in Robin Milner's sense, is two graphs over the same nodes at once: a <strong>place graph</strong> of nesting (what is inside what) and a <strong>link graph</strong> of wiring (what is connected to what). Vivarium borrows the idea and makes it run.</p>
+
+      <div class="cards cols-3" style="margin-top:26px">
+        <div class="card">
+          <h4><span style="color:var(--b-cell)">●</span> Typed stores</h4>
+          <p>Hierarchical, schema-validated state — the “place graph.” A store can hold a number, a mass with units, or another whole composite. Defined and checked by <span class="tag-pkg">bigraph-schema</span>.</p>
+          <div class="fxline"><span class="fx"><i>x</i> : P ⇀ V</span> typed by <span class="fx">Σ</span> · <span class="sf">Spatio-Flux</span> <code>substrates : map[concentration]</code></div>
+        </div>
+        <div class="card">
+          <h4><span style="color:var(--wire)">▬</span> Processes</h4>
+          <p>Executable components with explicit <em>input</em> and <em>output</em> ports. A process never mutates state directly — it reads its inputs and returns <strong>typed deltas</strong>.</p>
+          <div class="fxline"><span class="fx"><i>f</i> : (in<sub>τ</sub>) → (out<sub>τ</sub>)</span> · class <code>Process</code> · <span class="sf">Spatio-Flux</span> <code>MonodKinetics</code>, <code>DynamicFBA</code></div>
+        </div>
+        <div class="card">
+          <h4><span style="color:var(--living)">◈</span> Composites</h4>
+          <p>Encapsulated sub-simulations with their own internal stores and processes. A composite is itself a process — so models nest without limit.</p>
+          <div class="fxline"><span class="fx">bridge : ext → P</span> · class <code>Composite</code> · <span class="sf">Spatio-Flux</span> <code>spatioflux_reference_demo</code></div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>The one rule that makes it compose:</strong> processes emit typed deltas, and the runtime merges them. Numerical updates, structural rewrites (division, workflows), and scheduling all coexist under a single execution semantics. Process-Bigraph is a <strong>composition protocol, not a domain-specific simulator</strong>.
+      </div>
+
+      <h3 class="sub">Wiring, not calling</h3>
+      <p>Two processes never call each other. They are <strong>wired to the same store</strong> — one writes <code>mass</code>, another reads it — and the runtime is what carries the value across the wire between timesteps. That indirection is the whole trick: any process that speaks the port protocol can be swapped in, and heterogeneous timescales (a millisecond ODE next to an hour-long division event) resolve against the same shared state.</p>
+
+      <h3 class="sub">The formal object</h3>
+      <p>Everything above has a precise form. Each subsystem is a <strong>process bigraph</strong> — a four-part object the paper defines exactly:</p>
+      <div class="tuple"><i>B</i> = ( <b>Σ</b>, <span class="lv">x</span>, <i>R</i><sub>T</sub>, <i>R</i><sub>L</sub> )
+        <small><b>Σ</b> the schema (typed blueprint) · <span class="lv">x</span> the state (its stores) · <i>R</i><sub>T</sub> the type registry (how deltas apply) · <i>R</i><sub>L</sub> the link registry (which code runs each process). Separating <b>Σ</b> from <span class="lv">x</span> is what lets a model be validated, reused, and reasoned about apart from any single run.</small>
+      </div>
+
+      <h3 class="sub">Formalism ↔ software ↔ repos</h3>
+      <p>The framework's real payoff is that the formal symbols, the Python classes, and the repositories line up one-to-one — and each has a concrete counterpart in <strong>Spatio-Flux</strong>, the microbial-ecosystem model that runs throughout the paper. Read a row across and you have the whole stack; click a repo to open it.</p>
+      <div class="rosetta-wrap"><table class="rosetta">
+        <thead><tr><th>Formalism</th><th>Concept</th><th>Software class / API</th><th>Repo</th><th>Spatio-Flux example</th></tr></thead>
+        <tbody>
+        <tr><td class="sym">Σ : P ⇀ T</td><td>Schema — the typed blueprint of the hierarchy</td><td class="cls">Core · <code>_type</code></td><td class="repo"><button class="repolink" data-open="bigraph-schema">bigraph-schema</button></td><td class="sf">the <code>fields</code> / <code>particles</code> / <code>global_time</code> tree</td></tr>
+        <tr><td class="sym"><i>x</i> : P ⇀ V</td><td>State &amp; stores — values living at schema paths</td><td class="cls">a store (leaf / branch)</td><td class="repo"><button class="repolink" data-open="bigraph-schema">bigraph-schema</button></td><td class="sf"><code>substrates : map[concentration]</code></td></tr>
+        <tr><td class="sym"><i>R</i><sub>T</sub>, apply<sub>τ</sub></td><td>Type registry — how each type merges a delta</td><td class="cls">Core.apply · register_type</td><td class="repo"><button class="repolink" data-open="bigraph-schema">bigraph-schema</button></td><td class="sf"><code>conc_counts</code> keeps concentration ↔ counts consistent</td></tr>
+        <tr><td class="sym"><i>f</i> : (in<sub>τ</sub>)→(out<sub>τ</sub>)</td><td>Process interface — read ports to write ports</td><td class="cls"><code>Process</code> (inputs/outputs/update)</td><td class="repo"><button class="repolink" data-open="process-bigraph">process-bigraph</button></td><td class="sf"><code>MonodKinetics</code> &amp; <code>DynamicFBA</code> share one <code>substrates</code> port → interchangeable</td></tr>
+        <tr><td class="sym">δ = update(<i>x</i><sub>in</sub>, Δt)</td><td>Typed delta — a proposed change, not a mutation</td><td class="cls"><code>Process.update</code> returns δ</td><td class="repo"><button class="repolink" data-open="process-bigraph">process-bigraph</button></td><td class="sf">a dFBA step emits Δ substrates + Δ biomass</td></tr>
+        <tr><td class="sym"><i>x</i>′ = apply<sub>τ</sub>(<i>x</i>, δ)</td><td>Delta application — the type-directed merge</td><td class="cls">the type's <code>apply</code></td><td class="repo"><button class="repolink" data-open="bigraph-schema">bigraph-schema</button></td><td class="sf"><code>float</code> adds; a concentration stays ≥ 0</td></tr>
+        <tr><td class="sym">W : (proc, port) → P</td><td>Ports &amp; wiring — every coupling made explicit</td><td class="cls"><code>inputs</code> / <code>outputs</code> path maps</td><td class="repo"><button class="repolink" data-open="process-bigraph">process-bigraph</button></td><td class="sf">each species binds its <code>substrates</code> port to the shared field</td></tr>
+        <tr><td class="sym"><i>R</i><sub>L</sub></td><td>Link registry — address to a runnable class</td><td class="cls"><code>local:…</code> handler lookup</td><td class="repo"><button class="repolink" data-open="process-bigraph">process-bigraph</button></td><td class="sf"><code>local:…DynamicFBA</code></td></tr>
+        <tr><td class="sym">Composite · bridge</td><td>A sub-bigraph packaged as one process — the engine</td><td class="cls"><code>Composite</code></td><td class="repo"><button class="repolink" data-open="process-bigraph">process-bigraph</button></td><td class="sf"><code>spatioflux_reference_demo</code> — particles carrying internal dFBA</td></tr>
+        <tr><td class="sym">⟨B,t,t<sub>n</sub>⟩→⟨B′,…⟩</td><td>Orchestration — schedule, merge, rewrite over time</td><td class="cls"><code>Composite</code>; <code>Step</code> vs <code>Process</code></td><td class="repo"><button class="repolink" data-open="process-bigraph">process-bigraph</button></td><td class="sf"><code>DiffusionAdvection</code> (timed) ∥ <code>ParticleDivision</code> (rewrite)</td></tr>
+        <tr><td class="sym">observational Step</td><td>Record state without changing it</td><td class="cls"><code>Step</code> · <code>SQLiteEmitter</code></td><td class="repo"><button class="repolink" data-open="viva-emitters">viva-emitters</button></td><td class="sf">an emitter logs glucose / acetate / biomass each tick</td></tr>
+        </tbody>
+      </table></div>
+      <p style="color:var(--muted);font-size:14px">A formal guarantee, the class that enforces it, the package it ships in, and where it appears in a real model — in one line. The rest of this atlas is that table, expanded.</p>
+    </section>
+
+    <!-- ---------- UPDATE LOOP (interactive) ---------- -->
+    <section id="loop" class="prose">
+      <div class="eyebrow">Foundations · 02</div>
+      <h2 class="sec">The update loop, live</h2>
+      <p class="lede">Here is the canonical first process from the Vivarium quick-start — a cell that grows. It is 8 lines of Python, and the widget below <em>actually runs it</em> in your browser so you can watch typed deltas merge into a store, step by step.</p>
+
+      <div class="cards cols-2" style="margin-top:22px;align-items:start">
+        <div class="code">
+          <div class="code-title"><span>process_bigraph · Grow</span><span>python</span></div>
+<pre><span class="kw">class</span> <span class="fn">Grow</span>(Process):
+    config_schema = {<span class="st">'rate'</span>: {<span class="st">'_type'</span>:<span class="st">'float'</span>, <span class="st">'_default'</span>: <span class="st" id="rateEcho">0.10</span>}}
+
+    <span class="kw">def</span> <span class="fn">inputs</span>(self):   <span class="cm"># read port</span>
+        <span class="kw">return</span> {<span class="st">'mass'</span>: <span class="st">'float'</span>}
+    <span class="kw">def</span> <span class="fn">outputs</span>(self):  <span class="cm"># write port</span>
+        <span class="kw">return</span> {<span class="st">'mass'</span>: <span class="st">'float'</span>}
+
+    <span class="kw">def</span> <span class="fn">update</span>(self, state, interval):
+        <span class="cm"># emit a typed delta, don't mutate</span>
+        <span class="kw">return</span> {<span class="st">'mass'</span>: state[<span class="st">'mass'</span>] * self.config[<span class="st">'rate'</span>] * interval}</pre>
+        </div>
+
+        <div class="lab" style="margin-top:0">
+          <div class="lab-head"><span class="lab-tag">Interactive</span><h4>Run it</h4></div>
+          <div class="stepper" style="grid-template-columns:1fr">
+            <div class="step-diagram" id="stepDiagram"></div>
+            <div>
+              <div class="plot-wrap"><canvas id="growPlot"></canvas></div>
+              <div class="readout">
+                <span class="k">step</span><span class="v" id="roStep">0</span>
+                <span class="k">store · mass</span><span class="v" id="roMass">1.000</span>
+                <span class="k">last delta</span><span class="v" id="roDelta">—</span>
+                <span class="k">rate</span><span class="v"><input id="rateRange" type="range" min="2" max="30" value="10" style="width:120px;vertical-align:middle"> <span id="rateVal">0.10</span></span>
+              </div>
+              <div class="step-controls">
+                <button class="btn primary" id="stepBtn">▸ Step</button>
+                <button class="btn" id="runBtn">⟳ Run 20</button>
+                <button class="btn" id="resetBtn">↺ Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:18px;color:var(--muted);font-size:14px">Each <b>Step</b> calls <code>update()</code>, gets back <code>{mass: Δ}</code>, and the runtime <em>merges</em> that delta into the store. Nothing in <code>Grow</code> knows what happens next — a division process, an emitter, or a plot could all be wired to the same <code>mass</code> store, unchanged.</p>
+      <div class="callout"><strong>Formally:</strong> <code>update()</code> returns a typed delta <span class="fx">δ = update(<i>x</i><sub>in</sub>, Δt)</span>, and the runtime applies it by type — <span class="fx"><i>x</i>′ = apply<sub>τ</sub>(<i>x</i>, δ)</span>. For a <code>float</code> that merge is addition; for a concentration it clamps at zero; for a graph it rewrites structure. <code>Grow</code> is the minimal case — Spatio-Flux's <code>MonodKinetics</code> and <code>DynamicFBA</code> have the <em>exact same shape</em>, which is why one drops in for the other without touching anything else.</div>
+    </section>
+
+    <!-- ---------- ENGINE CORE ---------- -->
+    <section id="engine" class="prose">
+      <div class="eyebrow">Foundations · 03</div>
+      <h2 class="sec">The engine core</h2>
+      <p class="lede">Four repositories form the substrate everything else runs on — the type system, the runtime, the web workbench, and the AI tooling that writes the plumbing for you.</p>
+      <div class="cards cols-2" id="coreRepos" style="margin-top:26px"></div>
+    </section>
+
+    <!-- ---------- BUILD ---------- -->
+    <section id="build" class="prose">
+      <div class="eyebrow">Doing science · 04</div>
+      <h2 class="sec">Wrap → Compose → Run</h2>
+      <p class="lede">Every simulator in this ecosystem earns its place the same way: it is <strong>wrapped</strong> as a typed Process, <strong>composed</strong> with others through shared stores, and <strong>run</strong> by the engine. Three moves, endlessly repeated.</p>
+      <div class="cards cols-3" style="margin-top:24px">
+        <div class="card corerepo"><div class="idx">◆</div>
+          <h4>1 · Wrap</h4>
+          <p>Point at a real simulator — COPASI, LAMMPS, an FBA model — and expose its state as <code>inputs()</code>/<code>outputs()</code> ports. The wrapper bridges the actual binary or library; it does not fake the science. This is what a <span class="tag-pkg">viva-&lt;tool&gt;</span> repo <em>is</em>.</p>
+        </div>
+        <div class="card corerepo"><div class="idx">◆◆</div>
+          <h4>2 · Compose</h4>
+          <p>Wire several wrapped processes to shared stores to form a <strong>Composite</strong> — e.g. a membrane mechanics solver pushed by a particle-based actin process, closed-loop. The composite is a new process, ready to wrap again.</p>
+        </div>
+        <div class="card corerepo"><div class="idx">◆◆◆</div>
+          <h4>3 · Run</h4>
+          <p>Hand the composite to the runtime for N steps. It schedules each process on its own timescale, merges deltas, and streams observables to an <strong>emitter</strong> (SQLite, Parquet, RAM) for analysis.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- TEMPLATES & SITES ---------- -->
+    <section id="templates" class="prose">
+      <div class="eyebrow">Doing science · 05</div>
+      <h2 class="sec">Templates &amp; sites</h2>
+      <p class="lede">Here is the one idea that connects the science layer to the engine: a <strong>study or an investigation is a process-bigraph <em>template</em></strong> — a document with open <strong>sites</strong> (holes). Filling the holes turns it into a runnable <strong>Composite</strong>. The workbench stores the template and does the filling; the engine does the running.</p>
+
+      <div class="callout"><strong>template → site → fill → composite.</strong> A template fixes everything except a few named holes. Each <em>site</em> is a typed hole. Filling a site with a matching composite (plus its config) yields a concrete, runnable model — and leaving a site <em>open</em> is itself meaningful: it prunes that branch from the run. Toggle the two views below to see the same mechanism make a <strong>study</strong> and an <strong>investigation</strong>.</div>
+
+      <div class="tmpl" id="tmpl">
+        <div class="tmpl-modes" id="tmplModes" role="tablist" aria-label="Template kind">
+          <button data-mode="study" class="on" role="tab">A study is a template</button>
+          <button data-mode="investigation" role="tab">An investigation is a template</button>
+        </div>
+        <div class="tmpl-stage" id="tmplStage"></div>
+        <div class="tmpl-narrate" id="tmplNarrate"></div>
+      </div>
+      <p style="margin-top:16px;color:var(--muted);font-size:14px">Under the hood this is the engine's <code>trigger()</code> doing <strong>pull-or-compute</strong> on the results axis (process-bigraph Tutorial 4): an open results site computes; a filled one is read from cache; branches whose sites stay open are pruned. The Studies and Investigations sections below are this same mechanism, applied.</p>
+    </section>
+
+    <!-- ---------- STUDIES ---------- -->
+    <section id="studies" class="prose">
+      <div class="eyebrow">Doing science · 06</div>
+      <h2 class="sec">Studies, tests &amp; the analysis layer</h2>
+      <p class="lede">A running composite answers <em>nothing</em> on its own. A <strong>study</strong> is one question asked of one model — a composite plus configuration, turned into a verdict, a figure, and a report card. Studies move through five phases; click one.</p>
+      <p style="margin-top:-2px;color:var(--muted);font-size:14px">↑ In <a href="#templates">Templates &amp; sites</a> this is the <b>Study</b> view: the fixed analysis network with the <b>model as its open site</b>. Everything below — conditions, readouts, tests, visualizations — is what fills and grades that template.</p>
+
+      <div class="pipe" id="pipe"></div>
+      <div class="phase-detail" id="phaseDetail"></div>
+
+      <div class="cards cols-3" style="margin-top:26px">
+        <div class="card">
+          <span class="pill">Analysis · readouts</span>
+          <h4 style="margin-top:6px">What we measure</h4>
+          <p>A study declares <code>outputs</code> / <code>readouts</code> — the observables recorded each run (dry mass, growth rate, a species trajectory). They flow to an <strong>emitter</strong> and land in the study's own <code>runs.db</code>.</p>
+        </div>
+        <div class="card">
+          <span class="pill">Analysis · tests</span>
+          <h4 style="margin-top:6px">Tests as verdicts</h4>
+          <p><code>behavior_tests</code> turn expectations into graded <strong>PASS / FAIL / SKIP</strong> pills. A test's verdict is derived from the latest run's recorded outcome — never hand-set — so a report can never claim a pass it didn't measure.</p>
+        </div>
+        <div class="card">
+          <span class="pill">Analysis · visualization</span>
+          <h4 style="margin-top:6px">Figures &amp; report cards</h4>
+          <p>Each study renders named <strong>visualizations</strong> (<code>viz/&lt;name&gt;.html</code>) and a <strong>report card</strong> scoring the biological claim against literature anchors — the evidence a reviewer actually reads.</p>
+        </div>
+      </div>
+
+      <div class="lab">
+        <div class="lab-head"><span class="lab-tag" style="background:var(--wire)">Anatomy</span><h4>Inside <code>study.yaml</code></h4></div>
+        <p style="font-size:14px;color:var(--muted);margin:8px 0 0">The engine consumes a small, stable execution interface; the rest is narrative that renders into the report.</p>
+        <div class="code" style="margin-top:14px">
+<pre><span class="cm"># the part the engine runs:</span>
+composite: local.composites.ecoli_baseline   <span class="cm"># the model (a registered composite)</span>
+config: {media: succinate}                    <span class="cm"># overrides to its generator</span>
+inputs:  [{artifact: sim_data, from: parca, into: cache_dir}]  <span class="cm"># pulled from another study</span>
+outputs: [dry_mass, growth_rate]              <span class="cm"># observables recorded</span>
+emitter: sqlite
+<span class="cm"># the part humans read: question, behavior_tests, biological_summary,</span>
+<span class="cm"># literature_anchors, conclusion_verdicts, visualizations …</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- INVESTIGATIONS ---------- -->
+    <section id="investigations" class="prose">
+      <div class="eyebrow">Doing science · 07</div>
+      <h2 class="sec">Investigations build an argument</h2>
+      <p class="lede">An <strong>investigation</strong> is a set of studies that build a cumulative argument under one research question. It is the same idea as a study, one level up — a template with <strong>one open site per member study</strong>.</p>
+      <p style="margin-top:-2px;color:var(--muted);font-size:14px">↑ This is the <b>Investigation</b> view in <a href="#templates">Templates &amp; sites</a>: toggle members open/filled to watch <b>admit vs prune</b> and <b>pull vs compute</b> resolve live.</p>
+
+      <div class="cards cols-2" style="margin-top:24px;align-items:start">
+        <div class="prose">
+          <h3 class="sub" style="margin-top:4px">Convert → trigger → pull-or-compute</h3>
+          <p>The workbench lowers an investigation into a process-bigraph document and runs the engine's <code>trigger</code> over the results axis:</p>
+          <ul style="color:var(--muted);font-size:14.5px;line-height:1.7;max-width:60ch">
+            <li>an <strong>open</strong> results site → the study <em>computes</em>;</li>
+            <li>a <strong>filled</strong> site → consumers read the <em>cached</em> handle, no rerun;</li>
+            <li>a prerequisite is resolved by <strong>content address</strong> — pulled from <code>.pbg/artifacts/&lt;hash&gt;/</code> if it exists, computed if not; non-ancestors are <strong>pruned</strong>.</li>
+          </ul>
+          <p>That is what “<em>continue from here without rerunning the expensive upstream</em>” means concretely — reuse a cached ParCa fit, recompute only the downstream growth study.</p>
+        </div>
+        <div class="code" style="margin-top:0">
+          <div class="code-title"><span>investigation.yaml</span><span>yaml</span></div>
+<pre>name: metabolism_comparison
+description: Compare growth across carbon sources.
+members:
+  - <span class="st">parca</span>              <span class="cm"># the expensive fit (upstream)</span>
+  - <span class="st">glucose_growth</span>     <span class="cm"># ┐</span>
+  - <span class="st">succinate_growth</span>   <span class="cm"># ┤ each reads parca's cached sim_data</span>
+  - <span class="st">acetate_growth</span>     <span class="cm"># ┘</span></pre>
+          <div style="padding:14px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--muted)">
+            A DAG is inferred from each study's <code>prerequisites</code>. Filling a member admits it to the run; leaving it open prunes it. Gating is <em>filling</em>, not a scheduler decision.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- WORKBENCH ---------- -->
+    <section id="workbench" class="prose">
+      <div class="eyebrow">Doing science · 08</div>
+      <h2 class="sec">The workbench &amp; the skills</h2>
+      <p class="lede">You rarely write this plumbing by hand. <strong>vivarium-workbench</strong> is the web UI over a workspace; <strong>viva-superpowers</strong> is a Claude Code plugin whose 14 <code>/viva-*</code> skills scaffold the mechanical parts — you talk biology, the agent writes the typed Python, YAML, and figures.</p>
+
+      <div class="cards cols-2" style="margin-top:24px;align-items:start">
+        <div class="card">
+          <h4>🖥 vivarium-workbench</h4>
+          <p style="margin-top:8px">One codebase, three configurations that differ only by env vars: <b>local authoring</b>, a remote <b>sms-api</b> compute backend, and a public <b>read-only published</b> snapshot. Browse composites, run studies, inspect state-trees, render visualizations, and serve reports — no dashboard boilerplate.</p>
+        </div>
+        <div class="card">
+          <h4>🤖 viva-superpowers</h4>
+          <p style="margin-top:8px">Describe what you want to model in plain language; the agent routes it through the right skill. The whole loop: <b>describe → the right /viva-* skill runs → the workbench reflects it.</b></p>
+        </div>
+      </div>
+
+      <div class="cards cols-3" style="margin-top:16px">
+        <div class="card"><span class="pill">Wrap &amp; compose</span><h4 style="margin-top:6px;font-size:14.5px">/viva-expert</h4><p>Wrap a real simulator as a Process, or compose several into a Composite.</p></div>
+        <div class="card"><span class="pill">Lifecycle</span><h4 style="margin-top:6px;font-size:14.5px">/viva-workspace · /viva-workbench</h4><p>Scaffold a workspace; start the dashboard the other skills read from.</p></div>
+        <div class="card"><span class="pill">Studies &amp; runs</span><h4 style="margin-top:6px;font-size:14.5px">/viva-study · /viva-run · /viva-report</h4><p>Design → build → simulate → evaluate → decide; render reports.</p></div>
+        <div class="card"><span class="pill">Investigations</span><h4 style="margin-top:6px;font-size:14.5px">/viva-investigation</h4><p>Group studies into a cumulative argument and run the DAG.</p></div>
+        <div class="card"><span class="pill">Figures</span><h4 style="margin-top:6px;font-size:14.5px">/viva-viz</h4><p>Generate an interactive visualization from a plain-language description.</p></div>
+        <div class="card"><span class="pill">Rigor</span><h4 style="margin-top:6px;font-size:14.5px">/viva-cite-bands · /viva-harden-investigation</h4><p>Link references to acceptance bands; stress-test an overclaimed verdict.</p></div>
+      </div>
+    </section>
+
+    <!-- ---------- SCALE LADDER ---------- -->
+    <section id="scales" class="prose">
+      <div class="eyebrow">The ecosystem · 09</div>
+      <h2 class="sec">One protocol, every scale</h2>
+      <p class="lede">The point of a shared protocol is that a molecular-dynamics run and a whole-cell model become <em>the same kind of object</em>. Here is the wrapped ecosystem laid out from molecules to populations — click any simulator to inspect it.</p>
+      <div class="ladder" id="ladder"></div>
+    </section>
+
+    <!-- ---------- CATALOG ---------- -->
+    <section id="catalog" class="prose">
+      <div class="eyebrow">The ecosystem · 10</div>
+      <h2 class="sec">The simulator catalog</h2>
+      <p class="lede">Every repository in the ecosystem registry — each a real bridge to an upstream simulator or a composite of several. Search, filter by scale, and open any card for its <strong>major concepts</strong>, a <strong>real example</strong>, its <strong>related repos</strong> (click to hop between them), and its declared processes, steps, composites, and studies.</p>
+      <div class="catbar">
+        <label class="search">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <input id="catSearch" type="search" placeholder="Search simulators, tags, processes…" aria-label="Search catalog">
+        </label>
+        <div class="filters" id="catFilters"></div>
+      </div>
+      <div style="display:flex;align-items:center;margin-bottom:12px"><span class="catcount" id="catCount"></span></div>
+      <div class="catgrid" id="catGrid"></div>
+    </section>
+
+    <!-- ---------- LOOM ---------- -->
+    <section id="loom" class="prose">
+      <div class="eyebrow">The ecosystem · 11</div>
+      <h2 class="sec">Rendered by loom</h2>
+      <p class="lede">Every diagram so far was hand-drawn to teach. This one is not. <strong>bigraph-loom</strong> — the same React-Flow renderer the paper's figures are generated with — is embedded below, running entirely in this page, drawing a <em>real declared composite</em>: the whole-cell <em>E. coli</em> baseline, exactly as the engine sees it.</p>
+      <div class="callout"><strong>Extracted to run anywhere.</strong> Loom normally lives inside vivarium-workbench. For this atlas it was built into a single self-contained file — no server, no install — and embedded through loom's own <code>iframe</code> + <code>composite:load</code> contract. The same build drops into any page.</div>
+      <div class="lab" style="margin-top:20px">
+        <div class="lab-head"><span class="lab-tag" style="background:var(--wire)">Live · real renderer</span><h4>v2ecoli baseline composite</h4></div>
+        <div id="loomHost" style="margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel-2);min-height:440px;display:flex;align-items:center;justify-content:center">
+          <div id="loomPlaceholder" style="text-align:center;padding:44px 24px">
+            <p style="font-family:var(--mono);font-size:13px;color:var(--muted);max-width:48ch;margin:0 auto 18px;line-height:1.6">The full loom explorer is ~4&nbsp;MB, so it loads on demand. Once open: pan &amp; zoom, collapse subsystems, and click any process or store to inspect its ports and types.</p>
+            <button class="btn primary" id="loomLoad">▸ Load the loom explorer</button>
+            <a class="btn" href="loom.html" target="_blank" rel="noopener" style="margin-left:8px">Open in its own tab ↗</a>
+          </div>
+        </div>
+        <p id="loomNote" style="font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:10px"></p>
+      </div>
+    </section>
+
+    <!-- ---------- SPATIO-FLUX ---------- -->
+    <section id="spatioflux" class="prose">
+      <div class="eyebrow">The ecosystem · 12</div>
+      <h2 class="sec">Spatio-Flux: composition in action</h2>
+      <p class="lede"><strong>Spatio-Flux</strong> is the paper's reference application — and the clearest way to watch the formalism do work. It builds up a microbial ecosystem one process family at a time; at every step the pieces couple only through <strong>typed shared stores</strong>, and new behavior emerges from the composition, not from any single model. These are the models behind the paper's Figs 7–8, each a real declared composite in <button class="repolink" data-open="spatio-flux">spatio-flux</button>.</p>
+
+      <div class="sfprog">
+        <div class="sfstep"><div class="sfn">1</div><div>
+          <h4>One site, two formalisms</h4>
+          <p>A single well-mixed site, growing on a shared <code>substrates</code> store. Because <span class="fx">MonodKinetics</span> and <span class="fx">DynamicFBA</span> expose <em>identical port types</em> (<span class="fx">f : (in<sub>τ</sub>)→(out<sub>τ</sub>)</span>), one substitutes for the other without touching anything around it.</p>
+          <div class="cls-row"><span>MonodKinetics</span><span>DynamicFBA</span></div>
+          <div class="emerge">The composition guarantee in miniature: <b>swap the mechanism, keep the model</b> (Fig 7b,c).</div>
+        </div></div>
+
+        <div class="sfstep"><div class="sfn">2</div><div>
+          <h4>A community on one environment</h4>
+          <p>Drop several species into one shared nutrient environment. Each declares its own metabolism, but all bind the same environmental fields through their <span class="fx">substrates</span> port — coupling is mediated <em>entirely by shared state</em> (the wiring <span class="fx">W</span>), never by process-to-process calls.</p>
+          <div class="cls-row"><span>DynamicFBA ×N</span><span>MonodKinetics</span><span class="orch">multi-timestepping</span></div>
+          <div class="emerge">Species grow until the <b>shared resource depletes</b> — interaction with no direct connections (Fig 7a,d).</div>
+        </div></div>
+
+        <div class="sfstep"><div class="sfn">3</div><div>
+          <h4>Space: the COMETS lattice</h4>
+          <p>Give every lattice site its own metabolism and let neighbours exchange metabolites through <span class="fx">DiffusionAdvection</span>. Metabolism is local; transport is a separate process on the same fields — the classic COMETS-style alternation, expressed as composition.</p>
+          <div class="cls-row"><span>SpatialDFBA</span><span>DiffusionAdvection</span><span class="orch">multi-timestepping</span></div>
+          <div class="emerge">Biomass <b>climbs the glucose gradient</b>; acetate byproduct is consumed behind it — reproducing <button class="repolink" data-open="viva-comets">viva-comets</button> within 0.1% (Fig 7e,f).</div>
+        </div></div>
+
+        <div class="sfstep"><div class="sfn">4</div><div>
+          <h4>Motile particles</h4>
+          <p>Add agents that move. <span class="fx">BrownianMovement</span> gives stochastic motion; <span class="fx">PymunkParticleMovement</span> adds Newtonian mass, velocity and collisions. A <span class="fx">ManageBoundaries</span> <em>graph-rewrite</em> inserts and removes particles at the domain edge — structure that changes at runtime.</p>
+          <div class="cls-row"><span>BrownianMovement</span><span>PymunkParticleMovement</span><span class="orch">event-driven rewrite</span></div>
+          <div class="emerge">Particles <b>diffuse and collide</b> through continuous space (Fig 7g,h).</div>
+        </div></div>
+
+        <div class="sfstep"><div class="sfn">5</div><div>
+          <h4>The reference metacomposite</h4>
+          <p>Everything at once, in <code>spatioflux_reference_demo</code>. Newtonian particles each carry <em>two</em> internal dFBA models — <code>ecoli1</code> (glucose-specialist) and <code>ecoli2</code> (acetate-specialist). A <span class="fx">ParticleExchange</span> adapter couples particle chemistry to Monod + diffusion fields, an accumulate-mass adapter sums biomass, and a <span class="fx">ParticleDivision</span> rewrite splits a particle past a mass threshold.</p>
+          <div class="cls-row"><span>ParticleExchange</span><span>ParticleDivision</span><span>internal dFBA ×2</span><span class="orch">timed ∥ workflow ∥ rewrite</span></div>
+          <div class="emerge"><b>Glucose-specialists dominate early; acetate-specialists take over</b> as byproducts accumulate — a succession no single process encodes. It emerges from the composition (Fig 8).</div>
+        </div></div>
+      </div>
+
+      <div class="callout">Every step is the <strong>same machinery</strong> — typed stores, explicit wiring <span class="fx">W</span>, deltas applied by <span class="fx">apply<sub>τ</sub></span>, a <code>Composite</code> orchestrating — just more of it. Each is a real, executable composite you can open in <button class="repolink" data-open="spatio-flux">spatio-flux</button>, and the paper's figures are these exact models <a href="#loom">rendered by loom ↓</a>.</div>
+    </section>
+
+    <!-- ---------- FLAGSHIP ---------- -->
+    <section id="flagship" class="prose">
+      <div class="eyebrow">The ecosystem · 13</div>
+      <h2 class="sec">The flagship: a whole cell</h2>
+      <p class="lede">Everything converges in <strong>v2ecoli</strong> — a whole-cell <em>E. coli</em> model rebuilt in Vivarium 2. It is the ecosystem's proof that the protocol scales: 55+ mechanistic processes, from transcription to metabolism, wired into a single dividing cell.</p>
+      <div class="cards cols-2" style="margin-top:24px;align-items:start">
+        <div class="prose">
+          <p>The model wraps a large <code>Composite</code> (<code>EcoliWCM</code>) whose sub-processes each speak the same port protocol as the toy <code>Grow</code> above — transcript synthesis, protein degradation, two-component signalling, an FBA metabolism step, replication. A <strong>ParCa</strong> parameter-calculation study fits <code>sim_data</code> once; downstream growth studies pull that cached fit rather than recompute it.</p>
+          <p style="margin-top:12px">Because it is <em>just another composite</em>, it plugs into the same studies, tests, and visualizations as anything else in the catalog — and into larger composites still, like a cell coupled to a bioreactor.</p>
+          <a class="btn" href="#catalog" onclick="setTimeout(()=>openRepoByName('v2ecoli'),350)">Open v2ecoli in the catalog →</a>
+        </div>
+        <div class="artgrid" id="flagshipStats" style="align-content:start"></div>
+      </div>
+    </section>
+
+    <!-- ---------- GLOSSARY ---------- -->
+    <section id="glossary" class="prose">
+      <div class="eyebrow">Reference · 14</div>
+      <h2 class="sec">Glossary</h2>
+      <p class="lede">The vocabulary of the ecosystem, in one place.</p>
+      <dl class="gloss" id="gloss"></dl>
+      <div class="foot">
+        Vivarium Atlas · built over the vivarium-collective ecosystem registry.<br>
+        Framework: Agmon &amp; Spangler, <em>Process Bigraphs and the Architecture of Compositional Systems Biology</em> · arXiv:2512.23754.<br>
+        Core: process-bigraph · bigraph-schema · vivarium-workbench · viva-superpowers.
+      </div>
+    </section>
+  </main>
+</div>
+<div class="scrim" id="scrim"></div>
+
+
+<!-- ===================== MODAL ===================== -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-bg" id="modalBg"></div>
+  <div class="modal-card">
+    <div class="modal-head" id="modalHead">
+      <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+      <div class="rband" id="modalBand"></div>
+      <h3 id="modalTitle"></h3>
+      <p id="modalDesc"></p>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ===================== DATA ===================== */
+const ECO = /*__ECO__*/{"generated_at": "2026-07-27T23:53:30+00:00", "n_repos": 28, "repos": [{"name": "Viva-munk", "display": "viva-munk", "desc": "", "tags": [], "homepage": "https://github.com/vivarium-collective/Viva-munk", "counts": {"processes": 11, "steps": 2, "composites": 9, "studies": 9, "investigations": 1}, "processes": ["QuorumSensing", "Chemotaxis", "SecreteEPS", "DiffusionAdvection", "GrowDivide", "AdderGrowDivide", "FieldDecay", "InclusionBody", "IBColony", "PymunkProcess", "CellFieldExchange"], "steps": ["Pressure", "RemoveCrossing"], "composites": ["attachment", "bending_pressure", "biofilm", "chemotaxis", "daughter_machine", "glucose_growth", "inclusion_bodies", "mother_machine", "quorum_sensing"], "studies": ["attachment", "daughter-machine", "glucose-growth", "biofilm", "bending-pressure", "inclusion-bodies", "mother-machine", "quorum-sensing", "chemotaxis"], "investigations": ["composite-gallery"]}, {"name": "pbg-amici", "display": "viva-amici", "desc": "Process-bigraph wrapper for AMICI (CVODES-based ODE/DAE simulator). Real bridge to https://github.com/AMICI-dev/AMICI.", "tags": ["ode"], "homepage": "https://github.com/vivarium-collective/pbg-amici", "counts": {"processes": 1, "steps": 2, "composites": 3, "studies": 0, "investigations": 0}, "processes": ["AmiciProcess"], "steps": ["AmiciUTCStep", "AmiciSteadyStateStep"], "composites": ["amici_mapk_cascade", "amici_lotka_volterra", "amici_exponential_decay"], "studies": [], "investigations": []}, {"name": "pbg-biomodels", "display": "viva-biomodels", "desc": "Process-bigraph workspace: BIOMODELS regression \u2014 installs pbg-biomodels-bundle and drives investigations against the BioModels corpus", "tags": [], "homepage": "https://github.com/vivarium-collective/pbg-biomodels", "counts": {"processes": 0, "steps": 14, "composites": 4, "studies": 0, "investigations": 0}, "processes": [], "steps": ["ResultsAnalysisStep", "LoadReferenceResultsStep", "SimulatorComparisonStep", "MultiSimulatorComparisonStep", "BatchCompareStep", "BiomodelsCopasiStep", "BiomodelsTelluriumStep", "BiomodelsSimbioStep", "BiomodelsCopasiSteadyStateStep", "BiomodelsTelluriumSteadyStateStep", "BiomodelsSimbioSteadyStateStep", "SimulatorRunnerStep", "ReferenceDataStep", "LoadBiomodelStep"], "composites": ["compare-simulators", "compare-biomodel", "biomodel-process", "batch-compare-biomodels"], "studies": [], "investigations": []}, {"name": "pbg-biomodels-bundle", "display": "viva-biomodels-bundle", "desc": "Regression harness for BioModels: runs each model under multiple simulators (COPASI, Tellurium) and renders an interactive comparison report.", "tags": [], "homepage": "https://github.com/vivarium-collective/pbg-biomodels-bundle", "counts": {"processes": 0, "steps": 5, "composites": 0, "studies": 0, "investigations": 0}, "processes": [], "steps": ["ResultsAnalysisStep", "SimulatorComparisonStep", "LoadBiomodelStep", "LocalCopasiUTCStep", "LocalTelluriumUTCStep"], "composites": [], "studies": [], "investigations": []}, {"name": "pbg-bioreactordesign", "display": "viva-bioreactordesign", "desc": "Process-bigraph wrapper for BioReactorDesign (BiRD) bioreactor simulation", "tags": ["bioreactor"], "homepage": "https://github.com/vivarium-collective/pbg-bioreactordesign", "counts": {"processes": 3, "steps": 0, "composites": 4, "studies": 4, "investigations": 1}, "processes": ["BiRDReactorProcess", "MonodCellProcess", "BiRDTransportProcess"], "steps": [], "composites": ["bubble-column-demo", "bubble-column-with-viz", "reactor", "coupled_reactor_cell"], "studies": ["bird-02-closed-loop-liveness", "bird-01-transport-process", "bird-03-coupling-interval", "bird-04-reactor-geometry"], "investigations": ["bird-transport"]}, {"name": "pbg-caspule", "display": "viva-caspule", "desc": "Process-bigraph wrapper for CASPULE (a LAMMPS variant with dynamic bond formation/breaking)", "tags": ["lammps"], "homepage": "https://github.com/vivarium-collective/pbg-caspule", "counts": {"processes": 1, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["CASPULEProcess"], "steps": [], "composites": ["bond-network-demo", "bond-network-with-viz"], "studies": [], "investigations": []}, {"name": "pbg-comets", "display": "viva-comets", "desc": "Process-bigraph wrapper for COMETS (dynamic FBA + 2D spatial microbial ecosystems)", "tags": ["microbial", "spatial", "fba"], "homepage": "https://github.com/vivarium-collective/pbg-comets", "counts": {"processes": 3, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["DynamicFBAProcess", "SpatialDynamicFBAProcess", "CometsProcess"], "steps": [], "composites": ["dfba-textbook-with-viz", "dfba-textbook-demo"], "studies": [], "investigations": []}, {"name": "pbg-composite-nfsim-caspule", "display": "viva-composite-nfsim-caspule", "desc": "Process-bigraph composite: CASPULE bond-aware MD coupled to NFSim rule-based kinetics through a configurable observable detector that converts spatial bond clusters into non-spatial species counts.", "tags": ["spatial", "rule-based", "kinetics", "md", "composite"], "homepage": "https://github.com/vivarium-collective/pbg-composite-nfsim-caspule", "counts": {"processes": 0, "steps": 1, "composites": 0, "studies": 0, "investigations": 0}, "processes": [], "steps": ["ObservableDetector"], "composites": [], "studies": [], "investigations": []}, {"name": "pbg-compucell3d", "display": "viva-compucell3d", "desc": "Process-bigraph wrapper for the CompuCell3D multicellular simulation environment", "tags": ["multicellular"], "homepage": "https://github.com/vivarium-collective/pbg-compucell3d", "counts": {"processes": 1, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["CompuCell3DProcess"], "steps": [], "composites": ["cell-sorting-with-viz", "cell-sorting-demo"], "studies": [], "investigations": []}, {"name": "pbg-copasi", "display": "viva-copasi", "desc": "process-bigraph-compatible COPASI Steps and Processes for SBML simulation", "tags": ["sbml"], "homepage": "https://github.com/vivarium-collective/pbg-copasi", "counts": {"processes": 1, "steps": 2, "composites": 3, "studies": 0, "investigations": 0}, "processes": ["CopasiUTCProcess"], "steps": ["CopasiUTCStep", "CopasiSteadyStateStep"], "composites": ["utc-process", "steady-state", "utc-step"], "studies": [], "investigations": []}, {"name": "pbg-emitters", "display": "viva-emitters", "desc": "Focused emitter library for process-bigraph composites", "tags": [], "homepage": "https://github.com/vivarium-collective/pbg-emitters", "counts": {"processes": 0, "steps": 0, "composites": 0, "studies": 0, "investigations": 0}, "processes": [], "steps": [], "composites": [], "studies": [], "investigations": []}, {"name": "pbg-idynomics2", "display": "viva-idynomics2", "desc": "Process-bigraph wrapper for IDynoMiCS 2.0, the Kreft lab's Java-based individual-based biofilm simulator", "tags": [], "homepage": "https://github.com/vivarium-collective/pbg-idynomics2", "counts": {"processes": 1, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["IDynoMiCS2Process"], "steps": [], "composites": ["idynomics2_biofilm", "idynomics2_chemostat"], "studies": [], "investigations": []}, {"name": "pbg-lammps", "display": "viva-lammps", "desc": "Process-bigraph wrapper for the LAMMPS molecular dynamics simulator", "tags": ["lammps", "md"], "homepage": "https://github.com/vivarium-collective/pbg-lammps", "counts": {"processes": 4, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["ScheduledSetpoint", "LAMMPSProcess", "PIDController", "OscillatingForce"], "steps": [], "composites": ["lj-nve-demo", "lj-nve-demo-with-viz"], "studies": [], "investigations": []}, {"name": "pbg-martini", "display": "viva-martini", "desc": "Process-bigraph wrapper for the Martini coarse-grained force field \u2014 membrane systems, micelles, protein-lipid complexes, and vesicles", "tags": ["membrane", "coarse-grained"], "homepage": "https://github.com/vivarium-collective/pbg-martini", "counts": {"processes": 0, "steps": 5, "composites": 2, "studies": 0, "investigations": 0}, "processes": [], "steps": ["MartinizeStep", "MembraneBuilderStep", "MicelleBuilderStep", "ProteinMembraneStep", "VesicleBuilderStep"], "composites": ["martinize-demo-with-viz", "martinize-demo"], "studies": [], "investigations": []}, {"name": "pbg-medyan", "display": "viva-medyan", "desc": "Process-bigraph wrapper for the MEDYAN cytoskeleton simulator: pure-Python re-implementation + a subprocess-driven bridge to the real MEDYAN C++ binary (with checkpoint-restart and HDF5 vesicle support).", "tags": ["cytoskeleton", "membrane"], "homepage": "https://github.com/vivarium-collective/pbg-medyan", "counts": {"processes": 2, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["MedyanProcess", "MedyanCxxProcess"], "steps": [], "composites": ["network-demo", "network-demo-with-viz"], "studies": [], "investigations": []}, {"name": "pbg-mem3dg", "display": "viva-mem3dg", "desc": "Process-bigraph wrapper for Mem3DG membrane mechanics simulator", "tags": ["membrane"], "homepage": "https://github.com/vivarium-collective/pbg-mem3dg", "counts": {"processes": 1, "steps": 0, "composites": 5, "studies": 0, "investigations": 0}, "processes": ["Mem3DGProcess"], "steps": [], "composites": ["membrane-demo", "membrane-patch", "membrane-deflation", "membrane-demo-with-viz", "membrane-tube"], "studies": [], "investigations": []}, {"name": "pbg-membrane-actin-composite", "display": "viva-membrane-actin-composite", "desc": "Process-bigraph composite: pbg-mem3dg + pbg-readdy as a Brownian ratchet (actin pushing on membrane, closed-loop)", "tags": ["membrane", "composite", "particle"], "homepage": "https://github.com/vivarium-collective/pbg-membrane-actin-composite", "counts": {"processes": 1, "steps": 0, "composites": 6, "studies": 6, "investigations": 1}, "processes": ["BrownianRatchetCoupler"], "steps": [], "composites": ["rung1_fixed_boundary", "rung2_rigid_movable_boundary", "rung3_flexible_mem3dg_boundary", "rung3-flexible-mem3dg-boundary", "rung2-rigid-movable-boundary", "rung1-fixed-boundary"], "studies": ["actin-to-membrane-force-handshake", "coupled-ratchet-cycle-fv-reproduction", "fixed-boundary", "flexible-mem3dg-boundary", "rigid-movable-boundary", "membrane-to-actin-displacement-feedback"], "investigations": ["membrane-actin-ratchet"]}, {"name": "pbg-nfsim", "display": "viva-nfsim", "desc": "A process-bigraph wrapper for BioNetGen/NFSim", "tags": ["rule-based"], "homepage": "https://github.com/vivarium-collective/pbg-nfsim", "counts": {"processes": 2, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["NFSimProcess", "MonomerProduction"], "steps": [], "composites": ["flagella-assembly-with-viz", "flagella-assembly-demo"], "studies": [], "investigations": []}, {"name": "pbg-oxidizeme", "display": "viva-oxidizeme", "desc": "Process-bigraph wrapper for OxidizeME \u2014 a genome-scale ME-model of E. coli with ROS damage/repair (Yang et al. 2019 PNAS / Palsson lab)", "tags": [], "homepage": "https://github.com/vivarium-collective/pbg-oxidizeme", "counts": {"processes": 0, "steps": 1, "composites": 1, "studies": 0, "investigations": 0}, "processes": [], "steps": ["OxidizeMEStep"], "composites": ["oxidizeme_steady_state"], "studies": [], "investigations": []}, {"name": "pbg-reactive-system", "display": "viva-reactive-system", "desc": "Process-bigraph wrapper for Milner-style Bigraphical Reactive Systems, with a worked MAPK signalling example.", "tags": [], "homepage": "https://github.com/vivarium-collective/pbg-reactive-system", "counts": {"processes": 1, "steps": 0, "composites": 0, "studies": 0, "investigations": 0}, "processes": ["BigraphicalReactiveSystem"], "steps": [], "composites": [], "studies": [], "investigations": []}, {"name": "pbg-readdy", "display": "viva-readdy", "desc": "Process-bigraph wrapper for the ReaDDy particle-based reaction-diffusion simulator", "tags": ["particle", "reaction-diffusion"], "homepage": "https://github.com/vivarium-collective/pbg-readdy", "counts": {"processes": 1, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["ReaDDyProcess"], "steps": [], "composites": ["readdy-demo-with-viz", "readdy-demo"], "studies": [], "investigations": []}, {"name": "pbg-simbio", "display": "viva-simbio", "desc": "Process-bigraph wrapper for simbio (Chemical Reaction Network simulation) \u2014 load models from Antimony, simulate with simbio", "tags": ["sbml"], "homepage": "https://github.com/vivarium-collective/pbg-simbio", "counts": {"processes": 2, "steps": 3, "composites": 3, "studies": 0, "investigations": 0}, "processes": ["SimbioProcess", "SimbioUTCProcess"], "steps": ["BaseSimbioStep", "SimbioUTCStep", "SimbioSteadyStateStep"], "composites": ["simbio_brusselator", "simbio_lotka_volterra", "simbio_repressilator"], "studies": [], "investigations": []}, {"name": "pbg-smoldyn", "display": "viva-smoldyn", "desc": "Process-bigraph wrapper for the Smoldyn particle-based spatial stochastic simulator", "tags": ["spatial", "particle", "stochastic"], "homepage": "https://github.com/vivarium-collective/pbg-smoldyn", "counts": {"processes": 1, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["SmoldynProcess"], "steps": [], "composites": ["diffusion-reaction-with-viz", "diffusion-reaction-demo"], "studies": [], "investigations": []}, {"name": "pbg-tellurium", "display": "viva-tellurium", "desc": "Process-bigraph wrapper for Tellurium / libroadrunner SBML & Antimony simulation", "tags": ["sbml"], "homepage": "https://github.com/vivarium-collective/pbg-tellurium", "counts": {"processes": 1, "steps": 3, "composites": 3, "studies": 0, "investigations": 0}, "processes": ["TelluriumProcess"], "steps": ["BaseTelluriumStep", "TelluriumUTCStep", "TelluriumSteadyStateStep"], "composites": ["decay-with-viz", "steady-state", "decay-demo"], "studies": [], "investigations": []}, {"name": "pbg-vcell-fvsolver", "display": "viva-vcell-fvsolver", "desc": "process-bigraph wrapper around pyvcell / pyvcell-fvsolver \u2014 VCell's finite-volume 3D reaction-diffusion PDE solver as a PBG Process", "tags": ["reaction-diffusion", "pde"], "homepage": "https://github.com/vivarium-collective/pbg-vcell-fvsolver", "counts": {"processes": 1, "steps": 0, "composites": 2, "studies": 0, "investigations": 0}, "processes": ["VCellFVProcess"], "steps": [], "composites": ["rd-decay-with-viz", "rd-decay-demo"], "studies": [], "investigations": []}, {"name": "pbg-yalla", "display": "viva-yalla", "desc": "Process-bigraph wrapper for a NumPy port of ya||a's pair-wise agent-based morphogenesis simulator", "tags": ["agent-based", "morphogenesis"], "homepage": "https://github.com/vivarium-collective/pbg-yalla", "counts": {"processes": 2, "steps": 0, "composites": 3, "studies": 0, "investigations": 0}, "processes": ["YallaProcess", "YallaReproductionProcess"], "steps": [], "composites": ["yalla-real-springs", "yalla-springs-with-viz", "yalla-springs-demo"], "studies": [], "investigations": []}, {"name": "spatio-flux", "display": "spatio-flux", "desc": "spatio-temporal microbial simulations with Vivarium 2.0", "tags": ["microbial", "metabolism"], "homepage": "https://github.com/vivarium-collective/spatio-flux", "counts": {"processes": 8, "steps": 4, "composites": 19, "studies": 19, "investigations": 1}, "processes": ["_ShardFacade", "MonodKinetics", "DynamicFBA", "SpatialDFBA", "ShardedDFBA", "PymunkParticleMovement", "DiffusionAdvection", "BrownianMovement"], "steps": ["ManageBoundaries", "ParticleExchange", "ParticleDivision", "ParticleTotalMass"], "composites": ["spatial_many_dfba", "spatial_dfba_process", "diffusion_process", "spatioflux_reference_demo", "reference_demo_x2y2", "comets_diffusion", "comets_br_particles_kinetics", "comets_br_particles_dfba", "comets_nt_particles_dfba", "brownian_particles", "br_particles_kinetics", "br_particles_dfba", "newtonian_particles", "ecoli_core_dfba", "monod_kinetics", "ecoli_dfba", "yeast_dfba", "community_dfba", "dfba_kinetics_community"], "studies": ["reference_demo_x2y2", "community_dfba", "newtonian_particles", "dfba_kinetics_community", "spatial_dfba_process", "brownian_particles", "ecoli_dfba", "comets_diffusion", "monod_kinetics", "spatial_many_dfba", "br_particles_kinetics", "spatioflux_reference_demo", "comets_br_particles_kinetics", "comets_nt_particles_dfba", "diffusion_process", "ecoli_core_dfba", "yeast_dfba", "comets_br_particles_dfba", "br_particles_dfba"], "investigations": ["spatio-flux-test-suite"]}, {"name": "v2ecoli", "display": "v2ecoli", "desc": "Whole-cell E. coli model in Vivarium 2", "tags": ["whole-cell", "ecoli"], "homepage": "https://github.com/vivarium-collective/v2ecoli", "counts": {"processes": 21, "steps": 70, "composites": 11, "studies": 53, "investigations": 10}, "processes": ["EcoliWCM", "ColonyPhenotypeRecorder", "NoDaemonProcess", "EcoliProcess", "VivariumEcoliProcess", "RnaDegradation", "DnaABinder", "ChromosomePartition", "BasePolypeptideElongation", "TranscriptElongation", "LineageProcess", "FBABridge", "MillardWithLQR", "GlobalClock", "FBAFluxCoupler", "MillardPDMPMetabolismJAX", "MillardPDMPMetabolism", "BiRDTransportHours", "LQRControllerMultiState", "LQRController", "PartitionedProcess"], "steps": ["ShapeStep", "EcoliStep", "TwoComponentSystem", "TfBinding", "TfUnbinding", "ProteinDegradation", "Complexation", "TranscriptInitiation", "ChromosomeReplication", "PolypeptideInitiation", "Metabolism", "RnaMaturation", "ChromosomeStructure", "Equilibrium", "Analysis", "AnalysisStep", "MassFractionSummary", "DaughterMassSymmetry", "MassGrowthAcrossGenerations", "DoublingTimeDistribution", "MetricAcrossVariants", "PopulationPhenotypeBasalCard", "Visualization", "ReportCardStep", "EcoliPackStep", "BatchBaselineRunner", "Allocator", "PpgppInitiation", "DnaABoxBinding", "MillardBulkIndexer", "MarkDPeriod", "Division", "Rida", "UniqueUpdate", "ExchangeData", "TrnaAttenuationConfig", "ReactorCellCoupler", "MediaUpdate", "ReactorMillardEnvBridge", "Dars", "EnvironmentDriver", "PopulationAggregator", "RefGrowthDriver", "Ddah", "Requester", "Evolver", "V2Step", "EnvironmentMirror", "InputAdjustmentsStep", "TfConditionSpecsStep", "AdjustPromotersStep", "PromoterBindingStep", "FitConditionStep", "SetConditionsStep", "BasalSpecsStep", "FinalAdjustmentsStep", "InitializeStep", "VsLiteratureCard", "VsVecoliCard", "TestsCard", "DnaSupercoiling", "CountsDeriver", "DnaaBoxBinding", "ReplicationData", "LikelihoodCollector", "RnaSynthProb", "MassConservationDeriver", "RnapData", "MassDeriver", "TranslationDeriver"], "composites": ["reactor_bird_coupled", "reactor_bird_coupled_millard", "ecoli_time_varying_env", "ecoli_baseline", "ecoli_millard", "parca", "millard_fba_bridge_harness", "ecoli_population", "ecoli_colony", "ecoli_structural", "millard2017_metabolism"], "studies": ["metabolism_redux_basal", "showcase-6-equivalence-large", "s01-birth-and-division", "sm-04-through-division", "metabolism_redux_no_oxygen", "mbp-03-bird-reactor-coupling", "mbp-06-gap-analysis", "with_aa", "no_oxygen", "showcase-4-variant-comparison", "param-uq-03-growth-stratified", "colonies-04-device-phenotype-harness", "pdmp-04-compilation", "pdmp-01-metabolism-ode", "colonies-08-wcm-daughter-machine", "showcase-2-baseline-figures", "param-uq-01-elongation", "acetate", "colonies-02-parallel-multigen-perf", "param-uq-02-observables", "mbp-02-population-aggregation", "mbp-07-millard-kinetic-metabolism", "param-uq-04-deep-params", "mbp-01-time-varying-environment", "param-uq-00-screen", "parca", "basal", "statistical", "population_phenotype_basal", "colonies-05-mother-machine", "sm-02-utility-and-limits", "pdmp-00-characterization", "mbp-04-multigeneration-runs", "succinate", "showcase-1-parca", "metabolism_redux_with_aa", "colonies-03-wcm-rss-leak", "ko-and-media", "colonies-06-daughter-machine", "mbp-05-palsson-benchmark", "ketchup-exchange-comparison", "metabolism_redux_succinate", "metabolism_redux_acetate", "showcase-3-variant-decide", "sm-01-nn-surrogate", "sm-03-improving-the-surrogate", "pdmp-02-jump-processes", "showcase-5-next-direction-decide", "sm-00-data-collection", "pdmp-03-inference", "colonies-09-wcm-mother-machine", "colonies-01-hpc-readiness", "pdmp-05-causal-discovery"], "investigations": ["multiscale-bioprocess", "ketchup-baseline-comparison", "perturbation-demo", "v2ecoli-pdmp", "v2ecoli-vecoli-comparison", "structural-ecoli", "parameter-uq", "surrogate-modeling", "colonies", "v2ecoli-baseline-showcase"]}]}/*__ECO__*/;
+
+/* per-repo enrichment: concepts, example, relationships (from real sources) */
+const ENRICH = /*__ENRICH__*/{"pbg-simbio":{"name":"pbg-simbio","one_liner":"Real bridge to simbio (Chemical Reaction Network solver on poincare/LSODA) for simulating Antimony/SBML kinetic models as a process-bigraph Process.","underlying":{"tool":"simbio","kind":"Chemical Reaction Network (CRN) ODE simulator built on poincare/symbolite","url":"https://github.com/dyscolab/simbio"},"concepts":["SimbioProcess — assembles a genuine simbio.Compartment each update() and integrates with LSODA","SimbioUTCProcess — incremental Uniform Time Course process variant","SimbioUTCStep / SimbioSteadyStateStep — one-shot trajectory and steady-state Steps","BaseSimbioStep — shared model-load mixin for the Step classes","Antimony→libSBML→simbio rebuild — parses Antimony via libantimony/libSBML, rebuilds with simbio's native Species/Parameter/RateLaw (bypasses simbio's broken SBML importer)"],"example":{"title":"Brusselator CRN via composite generator","lang":"python","code":"from process_bigraph import Composite, allocate_core, gather_emitter_results\nfrom pbg_simbio.composites.crn import brusselator\n\ncore = allocate_core()\ndoc = brusselator(k2=3.0, interval=0.25)   # a chemical oscillator\nsim = Composite({\"state\": doc}, core=core)\nsim.run(25.0)\nresults = gather_emitter_results(sim)","note":"Runs the classic Prigogine oscillator (defined as an Antimony reaction string) as a SimbioProcess wired to concentrations/parameters stores and a RAM emitter."},"relates_to":["process-bigraph — runtime the Process plugs into","viva-copasi / viva-tellurium — alternative SBML/kinetics backends compared against simbio","viva-biomodels — runs simbio as one of its comparison engines against BioModels SED-ML references","viva-superpowers — supplies the @composite_generator decorator used by composites/crn.py"]},"pbg-copasi":{"name":"pbg-copasi","one_liner":"COPASI (via basico) wrapped as process-bigraph Steps/Processes for uniform-time-course and steady-state simulation of SBML kinetic models.","underlying":{"tool":"COPASI","kind":"SBML biochemical network ODE/stochastic simulator + steady-state solver","url":"https://copasi.org/"},"concepts":["CopasiUTCStep — one-shot Uniform Time Course trajectory (Step)","CopasiUTCProcess — incremental UTC simulation advancing per update() (Process)","CopasiSteadyStateStep — steady-state equilibrium solve (Step)","BaseCopasi — shared mixin for SBML parsing and species/reaction indexing"],"example":{"title":"utc-process composite (Repressilator)","lang":"yaml","code":"state:\n  copasi_utc_process:\n    _type: process\n    address: \"local:CopasiUTCProcess\"\n    config:\n      model_source: \"${model_source}\"\n      time: \"${time}\"\n      intervals: \"${intervals}\"\n    outputs:\n      species_concentrations: [\"stores\", \"species_concentrations\"]\n      fluxes: [\"stores\", \"fluxes\"]\n  emitter:\n    _type: step\n    address: \"local:RAMEmitter\"","note":"Discoverable composite (viva_copasi/composites/utc-process.composite.yaml) wiring CopasiUTCProcess to shared stores and a RAM emitter, defaulting to the bundled BIOMD0000000012 Repressilator."},"relates_to":["process-bigraph — runtime it plugs into","viva-tellurium — alternative libroadrunner-based SBML backend","viva-simbio — alternative CRN/ODE backend for the same models","viva-biomodels — invokes CopasiUTCStep as one comparison engine for BioModels"]},"pbg-tellurium":{"name":"pbg-tellurium","one_liner":"Tellurium/libroadrunner wrapped as a process-bigraph Process for simulating any SBML or Antimony kinetic model, deterministic or Gillespie stochastic.","underlying":{"tool":"Tellurium / libRoadRunner","kind":"SBML kinetics simulation environment (CVODE ODE + Gillespie SSA)","url":"https://tellurium.analogmachine.org/"},"concepts":["TelluriumProcess — time-driven bridge wrapping a lazily-initialized RoadRunner instance, advances by `interval` each update()","TelluriumUTCStep / TelluriumSteadyStateStep — one-shot trajectory and steady-state Steps","BaseTelluriumStep — shared model-load mixin for the Step classes","make_tellurium_document(...) — helper building a ready-to-run composite doc wiring the process to stores + RAM emitter"],"example":{"title":"Antimony decay model quick start","lang":"python","code":"from process_bigraph import Composite, allocate_core, gather_emitter_results\nfrom viva_tellurium import TelluriumProcess, make_tellurium_document\n\nANTIMONY = \"\"\"\nmodel decay\n  S1 = 10; S2 = 0\n  S1 -> S2; k*S1; k = 0.3\nend\n\"\"\"\ndoc = make_tellurium_document(model=ANTIMONY, interval=1.0)\nsim = Composite({'state': doc}, core=allocate_core())\nsim.run(10.0)","note":"Registers TelluriumProcess and a RAM emitter, then simulates a first-order decay reaction expressed as Antimony."},"relates_to":["process-bigraph — runtime it plugs into","viva-copasi — alternative COPASI/basico SBML backend","viva-simbio — alternative CRN/ODE backend for the same models","viva-biomodels — invokes TelluriumUTCStep/TelluriumProcess as a comparison engine for BioModels"]},"pbg-amici":{"name":"pbg-amici","one_liner":"Real bridge to AMICI (compiles SBML/Antimony into per-model C++/SUNDIALS CVODES extensions) as a process-bigraph Process for ODE simulation.","underlying":{"tool":"AMICI","kind":"Advanced Multilanguage Interface to CVODES and IDAS — compiles SBML models to C++ extensions backed by SUNDIALS","url":"https://github.com/AMICI-dev/AMICI"},"concepts":["AmiciProcess — drives amici.sim.sundials.run_simulation each update(); inputs states/parameters/fixed_parameters, outputs states/observables deltas","AmiciUTCStep / AmiciSteadyStateStep — one-shot trajectory and steady-state Steps","Per-model compiled-extension cache under $AMICI_MODELS_ROOT/<version>/<model_id>/ (first call compiles, ~10s; later calls reuse)","composite_generator decorator — declarative composite builders (exponential_decay, lotka_volterra, mapk_cascade)"],"example":{"title":"Lotka-Volterra via AMICI composite generator","lang":"python","code":"_ANTIMONY = \"\"\"\nmodel lotka_volterra\n  prey = 10\n  predator = 5\n  alpha = 1.1; beta = 0.4; d_gain = 0.1; d_death = 0.4\n  prey'     =  alpha*prey - beta*prey*predator\n  predator' =  d_gain*prey*predator - d_death*predator\nend\n\"\"\"\n@composite_generator(name=\"amici_lotka_volterra\", ...)","note":"Defines the predator-prey ODE model in Antimony; AmiciProcess compiles and integrates it via CVODES when the composite runs."},"relates_to":["process-bigraph — runtime it plugs into","viva-biomodels — optional 4th comparison engine (pip install -e \".[amici]\"), added because it has no binary wheel","viva-simbio / viva-copasi / viva-tellurium — alternative ODE/SBML backends compared in batch reports"]},"pbg-biomodels":{"name":"pbg-biomodels","one_liner":"Workspace for running BioModels repository SBML models under COPASI, Tellurium, simbio (and optionally AMICI), comparing trajectories via all-pairs nRMSE.","underlying":{"tool":"BioModels","kind":"EBI curated repository of published SBML systems-biology models","url":"https://www.ebi.ac.uk/biomodels/"},"concepts":["LoadBiomodelStep — fetches/caches a BioModel's SBML by id","SimulatorRunnerStep / SimulatorComparisonStep / MultiSimulatorComparisonStep / BatchCompareStep — run+score one or many models across simulators","BiomodelsCopasiStep / BiomodelsTelluriumStep / BiomodelsSimbioStep(+SteadyState variants) — thin adapters delegating to pbg-copasi/pbg-tellurium/pbg-simbio's canonical UTC Steps","compare-simulators / biomodel-process / compare-biomodel — discoverable composites (fan-out comparison, single pluggable process, COPASI-vs-Tellurium overlay)","LoadReferenceResultsStep — loads BioSimulators SED-ML reference results (reports.h5) as additional 'engines' in the nRMSE matrix"],"example":{"title":"CLI multi-simulator comparison report","lang":"bash","code":"# all simulators (copasi, tellurium, simbio), one report\npbg-biomodels compare BIOMD0000000001 BIOMD0000000012\n\n# pick a subset\npbg-biomodels compare BIOMD0000000001 --simulators copasi,simbio\n\n# emit a single BioModel as a pluggable process\npbg-biomodels process BIOMD0000000001 --simulator simbio --run 20 --interval 1.0","note":"Fetches named BioModels, runs each under the chosen simulator backends, and scores every pair with an nRMSE matrix in a navigable HTML report."},"relates_to":["viva-copasi / viva-tellurium / viva-simbio — canonical UTC Step classes it wraps as comparison engines","pbg-amici — optional 4th comparison engine","pbg-biomodels-bundle — predecessor package (BioModels REST client + SED-ML/SBML types) whose functionality was absorbed into this repo's viva_biomodels package","process-bigraph — composite/runtime substrate"]},"pbg-biomodels-bundle":{"name":"pbg-biomodels-bundle","one_liner":"Predecessor package providing the BioModels REST API client, SED-ML/SBML parsing, and shared bigraph-schema type registrations for BioModels results; now absorbed into pbg-biomodels.","underlying":{"tool":"BioModels REST API + SED-ML/SBML tooling","kind":"Model-repository client and result-schema library (python `biomodels` client, `rest-process`, python-libsedml/libsbml)","url":"https://www.ebi.ac.uk/biomodels/"},"concepts":["register_types / TYPES_DICT — bigraph-schema type dictionaries for SED-ML-style results (numeric_result, results, columns_of_interest), now re-exported from viva_biomodels/__init__.py","BioModels REST client integration — the `biomodels` PyPI client + `rest-process` used to fetch/cache model metadata and SBML","SED-ML/SBML parsing helpers — python-libsedml + python-libsbml for reading simulation-experiment descriptions bundled with BioModels entries","Absorption into pbg-biomodels — its simulator-wrapper and BioModels-corpus responsibilities were merged directly into viva-biomodels's dependency set and package"],"example":{"title":"TYPES_DICT re-export (conceptual)","lang":"python","code":"# viva_biomodels/__init__.py documents the absorption:\n# \"Shared bigraph-schema type registrations (absorbed from pbg-biomodels-bundle)\"\nsed_types = {\n    'result': {'time': 'list[float]', 'species_concentrations': 'map[list[float]]'},\n    'results': 'map[result]'\n}","note":"conceptual — reconstructed from viva-biomodels's own comments/pyproject notes describing what was absorbed from pbg-biomodels-bundle; the bundle repo itself was not checked out locally."},"relates_to":["pbg-biomodels — absorbed this package's REST client, SED-ML types, and corpus tooling directly into its own viva_biomodels package","process-bigraph — bigraph-schema types it registered are consumed by process-bigraph composites"]},"pbg-nfsim":{"name":"pbg-nfsim","one_liner":"Wraps BioNetGen/NFSim network-free rule-based stochastic simulation as a process-bigraph Process, demoed on flagella assembly.","underlying":{"tool":"BioNetGen / NFSim","kind":"network-free rule-based stochastic simulator","url":"https://bionetgen.org/"},"concepts":["NFSimProcess — bridge Process that rewrites a BNGL template's seed species each interval and runs NFSim","MonomerProduction — constant-rate Process producing monomers, mimicking gene expression","bridge pattern — per-step regex substitution into BNGL text + temp-dir NFSim run + delta return","seedable observables — simple molecule counts carry over between steps; growing intermediates with counter states do not","make_complexation_document / make_production_document — composite factories for standalone vs. composed workflows"],"example":{"title":"Composed production + complexation composite (YAML)","lang":"yaml","code":"name: flagella-assembly-demo\nrequires:\n  processes: [NFSimProcess, MonomerProduction, RAMEmitter]\nstate:\n  production:\n    _type: process\n    address: \"local:MonomerProduction\"\n    config:\n      production_rates:\n        Free_fliG: 1.3\n        Free_fliM: 1.7","note":"MonomerProduction feeds free monomers into a shared species store that NFSimProcess complexes each interval, both recorded by RAMEmitter."},"relates_to":["process-bigraph — runtime/core the Process classes and Composite are built on","pbg-superpowers — shared dependency providing demo/report tooling","pbg-reactive-system — another rule/rewrite-based reaction engine, but generic bigraphical rewriting instead of BNGL/NFSim"]},"pbg-reactive-system":{"name":"pbg-reactive-system","one_liner":"Process-bigraph wrapper for Milner-style Bigraphical Reactive Systems (redex/reactum rewriting), demoed on a MAPK signalling cycle.","underlying":{"tool":"Bigraphical Reactive Systems (Milner formalism, implemented via bigraph_schema.assembly)","kind":"graph-rewriting reaction engine (deterministic / stochastic / Gillespie SSA)","url":"https://github.com/vivarium-collective/pbg-reactive-system"},"concepts":["BigraphicalReactiveSystem — Process firing redex->reactum rewrite rules on a time-stepped schedule","ReactionRule — redex/reactum/instantiation/rate rule objects from bigraph_schema.assembly","firing modes — deterministic (first match wins), stochastic (per-tick Gillespie pick), gillespie (proper SSA tau-leap)","propensity = rate * |matches(R)| — mass-action-style firing distribution over the match multiset","mapk_rules()/register_mapk_types() — worked MAPK example: 7 rules over nested Cell/Cytoplasm/Nucleus/ERLumen bigraph"],"example":{"title":"Driving the BRS engine directly with a custom rule","lang":"python","code":"flip = ReactionRule(\n    redex={'bag': {'_type': 'Bag', 'tok': {'_type': 'Red'}, 'rest': Site()}},\n    reactum={'bag': {'_type': 'Bag', 'tok': {'_type': 'Blue'}, 'rest': Site()}},\n    instantiation={'rest': 'rest'}, rate=1.0, label='flip')\nproc = BigraphicalReactiveSystem(config={'rules': [flip], 'mode': 'gillespie', 'seed': 0}, core=core)\nout = proc.update({'state': state}, interval=5.0)","note":"Rules are biology-agnostic; the MAPK model (phosphorylate/dissociate/translocate) is one worked instantiation."},"relates_to":["bigraph-schema — supplies the ReactionRule, Site, find_matches, and fire_rule primitives the engine wraps","process-bigraph — Composite/Process runtime hosting the engine","pbg-nfsim — a different rule-based rewriting engine (BNGL/NFSim) at a molecular-network level vs. this generic bigraph-node level"]},"pbg-readdy":{"name":"pbg-readdy","one_liner":"Process-bigraph wrapper for ReaDDy's particle-based Brownian-dynamics reaction-diffusion simulator, including bonded topologies.","underlying":{"tool":"ReaDDy","kind":"particle-based reaction-diffusion (Brownian dynamics) simulator","url":"https://readdy.github.io"},"concepts":["ReaDDyProcess — bridge Process lazily building a readdy.ReactionDiffusionSystem, running via callback-based observables","topology support — topology_species/topology_bonds/topology_angles/initial_topologies for bonded chains/filaments","wall_z / wall_radius inputs — dynamic planar or spherical barrier potentials, rebuilt on change with 1e-2 hysteresis to avoid rebuild-thrash","_snapshot_particles_by_species / _snapshot_topologies — state-preserving rebuild when barrier geometry changes mid-run","make_readdy_document() — composite factory wiring species/reactions/potentials/particles to a RAMEmitter"],"example":{"title":"Minimal ReaDDy demo composite (YAML)","lang":"yaml","code":"name: readdy-demo\nrequires:\n  processes: [ReaDDyProcess, RAMEmitter]\nstate:\n  readdy:\n    _type: process\n    address: \"local:ReaDDyProcess\"\n    config:\n      box_size: [6.0, 6.0, 6.0]\n      periodic: [true, true, true]\n      species:\n        A: 1.0","note":"A particles diffuse in a periodic box with first-order decay; total_particles/energy/time are emitted each step."},"relates_to":["process-bigraph — Process/Composite runtime","pbg-smoldyn — sibling particle-based spatial stochastic simulator wrapper, alternate spatial-resolution engine","pbg-superpowers — shared demo/report and registration tooling","pbg-vcell-fvsolver — continuum PDE alternative to ReaDDy's discrete-particle spatial approach"]},"pbg-smoldyn":{"name":"pbg-smoldyn","one_liner":"Process-bigraph wrapper for Smoldyn, a single-molecule-resolution spatial stochastic Brownian-dynamics simulator.","underlying":{"tool":"Smoldyn","kind":"particle-based spatial stochastic simulator (single-molecule Brownian dynamics)","url":"http://www.smoldyn.org/"},"concepts":["SmoldynProcess — bridge Process wrapping a lazily-built smoldyn.Simulation, advanced via runUntil()","bridge pattern — build simulation from config (species/reactions/bounds/dt) once, then incrementally step it","get_molecule_positions() — reads Smoldyn's molpos output buffer for 2D/3D particle snapshots","reaction config — {name, subs, prds, rate} with optional kb for bidirectional reactions","make_smoldyn_document() — composite factory pre-wiring SmoldynProcess + stores + RAMEmitter"],"example":{"title":"Minimal diffusion-reaction demo composite (YAML)","lang":"yaml","code":"name: diffusion-reaction-demo\nrequires:\n  processes: [SmoldynProcess, RAMEmitter]\nparameters:\n  rate_ab:\n    type: float\n    default: 0.01\n    description: \"First-order reaction rate constant for A -> B.\"","note":"Species A diffuses and converts to slower species B via a first-order reaction in a 2D reflecting box."},"relates_to":["process-bigraph — Process/Composite runtime","pbg-readdy — sibling particle-based reaction-diffusion wrapper (Brownian dynamics), differing engine/feature set (e.g. no topologies here)","pbg-superpowers — shared demo/report tooling","pbg-vcell-fvsolver — continuum finite-volume PDE alternative to Smoldyn's discrete-particle approach"]},"pbg-vcell-fvsolver":{"name":"pbg-vcell-fvsolver","one_liner":"Process-bigraph wrapper around pyvcell / pyvcell-fvsolver, VCell's native finite-volume 3D reaction-diffusion PDE solver.","underlying":{"tool":"VCell finite-volume solver (pyvcell / pyvcell-fvsolver)","kind":"3D finite-volume reaction-diffusion PDE solver (batch engine)","url":"https://github.com/virtualcell/pyvcell"},"concepts":["VCellFVProcess — bridge Process that pre-runs the full batch PDE solve on first update() then streams cached snapshots","Antimony -> VCML -> .fvinput/.vcg -> pyvcell_fvsolver.solve() -> zarr datastore pipeline","batch-engine pattern — re-running per PBG step would be far costlier than solving once and indexing by nearest time snapshot","_suppress_jvm_noise/_restore_stdout — redirects libvcell's JVM Log4j stdout during solve","make_rd_document() — composite factory wiring antimony + species init_conc/diff_coef to fields/means/totals outputs"],"example":{"title":"Minimal reaction-diffusion decay demo composite (YAML)","lang":"yaml","code":"name: rd-decay-demo\nrequires:\n  processes: [VCellFVProcess, RAMEmitter]\nparameters:\n  duration:\n    type: float\n    default: 1.0\n    description: \"Total simulated time; wrapper pre-runs the full PDE solve then streams snapshots.\"","note":"A uniform pool of species A decays to B (A -> B; k*A) on a small 3D Cartesian mesh, no diffusion."},"relates_to":["process-bigraph — Process/Composite runtime","pbg-readdy — particle-based (discrete) alternative to this continuum finite-volume PDE approach","pbg-smoldyn — particle-based spatial stochastic alternative at single-molecule resolution","pbg-superpowers — shared demo/report tooling"]},"pbg-lammps":{"name":"pbg-lammps","one_liner":"Bidirectional process-bigraph bridge to LAMMPS: advances MD each step and lets sibling processes drive thermostat, barostat, and applied force.","underlying":{"tool":"LAMMPS","kind":"molecular dynamics simulator","url":"https://www.lammps.org/"},"concepts":["LAMMPSProcess — drives a lammps.lammps instance via update(interval), re-issuing owned fix commands","PIDController — observes a scalar and emits a clamped setpoint for closed-loop control","OscillatingForce — emits a sinusoidal 3-vector force as a driving input","make_pid_controlled_document — wires PIDController output back into controls/target_temperature"],"example":{"title":"Open-loop NVT quench via make_lammps_document","lang":"python","code":"core = allocate_core()\nregister_pbg_lammps(core)\ncore.register_link('ram-emitter', RAMEmitter)\n\ndoc = make_lammps_document(input_script=NVT_SCRIPT, interval=1.0)\nsim = Composite({'state': doc}, core=core)\nsim.run(10.0)\nprint(sim.state['stores']['temperature'])","note":"run/rerun and any owned fix lines are stripped from the script; the bridge re-issues them each step from PBG input ports."},"relates_to":["pbg-caspule — shares the same LAMMPS-Python-binding bridge pattern, extended for dynamic bonds","process-bigraph — runtime the Process/Step classes plug into","pbg-superpowers — shared visualization/demo-report base classes"]},"pbg-caspule":{"name":"pbg-caspule","one_liner":"process-bigraph wrapper for CASPULE (bond-forming LAMMPS variant), exposing live bond network, cluster sizes, and formed/broken bond counts as ports.","underlying":{"tool":"CASPULE","kind":"LAMMPS variant with dynamic bond formation/breaking (fix bond/create/random)","url":"https://caspule.github.io/caspule/"},"concepts":["CASPULEProcess — drives LAMMPS via update(), diffs bonds each step to compute formed/broken counts","gather_bonds() bridge — same LAMMPS Python API works unmodified on stock or CASPULE-patched builds","Union-find clustering — connected-component analysis over the live bond graph for num_clusters/largest_cluster","make_caspule_document — wires CASPULEProcess to a RAMEmitter recording thermo + bond ports"],"example":{"title":"Sticker-spacer dynamic bonding run","lang":"python","code":"core = register_caspule()\ndoc = make_caspule_document(input_script=script, interval=0.05)\nsim = Composite({'state': doc}, core=core)\nsim.run(0.5)\n\nresults = gather_emitter_results(sim)[('emitter',)]\nfor emit in results:\n    print(f\"t={emit['time']:.3f}  bonds={emit['num_bonds']}  formed={emit['formed_bonds']}\")","note":"script uses stock fix bond/create; the same wrapper works unmodified against a CASPULE-patched LAMMPS build."},"relates_to":["pbg-lammps — sibling repo, same lammps.lammps bridge and stripped run/rerun pattern","process-bigraph — runtime the CASPULEProcess Process class plugs into","pbg-superpowers — shared demo-report/visualization tooling"]},"pbg-martini":{"name":"pbg-martini","one_liner":"process-bigraph Steps for Martini coarse-grained force-field pipelines: protein martinization, bilayer/micelle/vesicle building, and a parsimony-to-CG whole-cell MD bridge.","underlying":{"tool":"Martini (via vermouth/martinize2)","kind":"coarse-grained molecular force field","url":"https://cgmartini.nl"},"concepts":["MartinizeStep — atomistic PDB to Martini CG mapping via vermouth/martinize2","MembraneBuilderStep / MicelleBuilderStep / VesicleBuilderStep — procedural CG lipid assembly (POPC, POPE, CHOL, SM, DPPC, DPC)","ParsimonySliceStep / ParsimonyAssembleStep — stamp CG molecules at parsimony-measured 3D poses instead of random Bentopy packing","MartiniMDStep — WCA relax plus best-effort short OpenMM NVT"],"example":{"title":"MembraneBuilderStep as a PBG Step","lang":"python","code":"core = allocate_core()\ncore.register_link('MembraneBuilderStep', MembraneBuilderStep)\n\nstep = MembraneBuilderStep(\n    config={'composition': {'POPC': 0.7, 'CHOL': 0.3}, 'nx': 10, 'ny': 10},\n    core=core,\n)\nresult = step.update({})","note":"build_bilayer()/build_micelle()/build_vesicle() are the underlying pure functions each Step wraps."},"relates_to":["pbg-mem3dg — both model membrane structure, at different physics resolutions (CG particles vs. continuum mesh)","parsimony (viva-parsimony / v2ecoli 3D) — source of the packed ecoli_3d.pack.json positions ParsimonySliceStep slices","process-bigraph — runtime the Step classes plug into"]},"pbg-medyan":{"name":"pbg-medyan","one_liner":"process-bigraph wrapper for MEDYAN cytoskeletal networks, shipping both a pure-Python re-implementation and a subprocess bridge to the real MEDYAN C++ binary.","underlying":{"tool":"MEDYAN","kind":"mechanochemical cytoskeletal network simulator","url":"https://medyan.org/"},"concepts":["MedyanProcess — pure-Python engine (Brownian-ratchet polymerization, Hill-stall myosin, membrane coupling) for fast prototyping","MedyanCxxProcess — subprocess driver for the real MEDYAN binary, parsing legacy snapshot.traj and HDF5 traj.h5","actin_copy input port — a sibling PBG process can drive MEDYAN's G-actin concentration mid-simulation, a composition MEDYAN's CLI can't do alone","Deformable-vesicle membrane — Helfrich bending + volume conservation, parsed live from traj.h5 mesh data"],"example":{"title":"Real MEDYAN binary driven by an actin pulse","lang":"python","code":"proc = MedyanCxxProcess(config={\n    'n_filaments': 5, 'filament_length': 1,\n    'snapshot_interval': 0.1,\n    'chemistry_preset': 'actin_only',\n}, core=core)\nproc.initial_state()\nproc.update({}, interval=1.0)\nfor frame in proc.get_last_frames():\n    print(frame.time, len(frame.filaments))","note":"wrapper locates the medyan binary via binary_path config, MEDYAN_BIN env var, or PATH, in that order."},"relates_to":["pbg-mem3dg — both couple filament/mesh mechanics to membrane deformation via Helfrich-style bending energy","pbg-martini — sibling cytoskeleton/membrane wrapper repo, similar bridge-pattern architecture","process-bigraph — runtime both MedyanProcess and MedyanCxxProcess plug into"]},"pbg-mem3dg":{"name":"pbg-mem3dg","one_liner":"process-bigraph bridge to Mem3DG, a discrete-differential-geometry membrane mechanics simulator on triangulated meshes.","underlying":{"tool":"Mem3DG","kind":"membrane mechanics simulator (discrete differential geometry)","url":"https://github.com/RangamaniLabUCSD/Mem3DG"},"concepts":["Mem3DGProcess — lazily initializes a pymem3dg System + Euler integrator, advances via march() each update()","Helfrich bending + osmotic pressure model — Kbc bending rigidity, tension_modulus, osmotic_strength, preferred_volume_fraction config","overwrite output ports — vertex_positions, curvatures, and energies replaced wholesale each step, not accumulated as deltas","make_membrane_document — wires Mem3DGProcess to stores and a RAMEmitter tracking energy/area/volume"],"example":{"title":"Osmotic deflation of an icosphere membrane","lang":"python","code":"doc = make_membrane_document(\n    mesh_type='icosphere', radius=1.0, subdivision=3,\n    Kbc=8.22e-5, tension_modulus=0.1,\n    osmotic_strength=0.02, preferred_volume_fraction=0.7,\n    interval=100.0,\n)\nsim = Composite({'state': doc}, core=core)\nsim.run(1000.0)","note":"characteristic_timestep and tolerance control the internal Euler integrator's convergence per update() call."},"relates_to":["pbg-medyan — MedyanCxxProcess's enable_membrane vesicle uses an analogous Helfrich + volume-conservation model","pbg-martini — complementary membrane representation at coarse-grained particle resolution vs. continuum mesh","process-bigraph — runtime Mem3DGProcess plugs into"]},"Viva-munk":{"name":"Viva-munk","one_liner":"process-bigraph framework for multi-cell 2D simulations on pymunk physics: growing/dividing capsule cells, diffusing fields, and mechanical pressure.","underlying":{"tool":"pymunk","kind":"2D rigid-body physics engine","url":"https://www.pymunk.org/"},"concepts":["PymunkProcess — manages the pymunk Space; rigid capsule cells, multi-segment bending compound bodies, and particles","GrowDivide / AdderGrowDivide — exponential mass growth gated by Monod nutrient factor and pressure inhibition, division into daughters","DiffusionAdvection + CellFieldExchange — FTCS diffusion field coupled to per-cell uptake/secretion each tick","pymunk_agent type — hand-optimized Node-subclass carrying cell geometry/physics state with custom apply/reconcile dispatch"],"example":{"title":"glucose_growth experiment document","lang":"python","code":"from viva_munk.processes.multibody import build_microbe, make_rng\nfrom viva_munk.processes.grow_divide import add_adder_grow_divide_to_agents\nfrom viva_munk.processes.cell_field_exchange import make_cell_field_exchange_process\n\n# DiffusionAdvection diffuses a 2D glucose field; CellFieldExchange samples\n# local concentration onto each cell; GrowDivide gates growth by Monod S/(Km+S).","note":"cells stop dividing once their local glucose patch is depleted; from viva_munk/experiments/documents/glucose_growth.py."},"relates_to":["spatio-flux — positive-type accumulator-with-clamp semantics (PositiveFloat/Concentration) adapted from it","pbg-superpowers — Visualization base class subclassed by viva_munk/visualizations","process-bigraph — bigraph process runtime all viva_munk Processes/Steps register against"]},"pbg-comets":{"name":"pbg-comets","one_liner":"Process-bigraph wrapper for COMETS spatial dynamic-FBA, plus a pure-Python dFBA fallback that needs no Java install.","underlying":{"tool":"COMETS (Computation Of Microbial Ecosystems in Time and Space) + cometspy","kind":"Genome-scale dynamic FBA / spatial metabolic community simulator","url":"https://www.runcomets.org/"},"concepts":["CometsProcess — bridges cometspy.comets(...).run(), needs COMETS_HOME and the Java engine","DynamicFBAProcess — pure-Python well-mixed dFBA over cobra models, explicit-Euler substeps","SpatialDynamicFBAProcess — 2D grid dFBA with Fickian diffusion mirroring COMETS's lattice","Michaelis-Menten uptake bounds — per-metabolite vmax/km set exchange bounds each substep","overwrite ports — biomass/media/growth_rates written as absolute replacement, not deltas"],"example":{"title":"Self-contained dynamic FBA (no COMETS install needed)","lang":"python","code":"core = allocate_core()\ncore.register_link('DynamicFBAProcess', DynamicFBAProcess)\ndoc = make_dfba_document(\n    models=['textbook'], model_ids=['E_coli'],\n    initial_biomass=[5e-4],\n    initial_media={'glc__D': 15.0, 'o2': 10.0, 'nh4': 1000.0},\n    volume=1.0, substep=0.1, interval=0.2,\n)\nsim = Composite({'state': doc}, core=core)\nsim.run(12.0)","note":"The three processes (real COMETS, well-mixed dFBA, spatial dFBA) share the same scalar output ports so they're swappable."},"relates_to":["process-bigraph — runtime the wrapper is built on","spatio-flux — reconstructs COMETS-style spatial dFBA concepts independently","viva-oxidizeme — both wrap constraint-based metabolic models as pbg components (dFBA vs ME-model LP)"]},"pbg-compucell3d":{"name":"pbg-compucell3d","one_liner":"Process-bigraph wrapper for CompuCell3D's cellular Potts model (CPM), exposing cell-population stats and the 2D lattice as bigraph ports.","underlying":{"tool":"CompuCell3D (CC3D)","kind":"Cellular Potts model (Glazier-Graner-Hogeweg) multicellular simulator","url":"https://compucell3d.org/"},"concepts":["CompuCell3DProcess — single time-driven Process wrapping CC3D's Python API","CC3DSimService — internal bridge object managing the full CPM sim between update() calls","Contact energies — contact_t1_t1/t1_t2/t2_t2 config keys drive Potts adhesion/sorting","mcs-based stepping — update(interval) advances CC3D by Monte Carlo Steps, not wall time","get_snapshot() — extended per-cell id/type/volume/surface/COM data outside the pbg dataflow"],"example":{"title":"Cell sorting via differential adhesion","lang":"python","code":"proc = CompuCell3DProcess(config={\n    'dim_x': 80, 'dim_y': 80,\n    'contact_t1_t1': 2.0,   # low homo-adhesion  -> engulfs\n    'contact_t1_t2': 11.0,  # hetero-adhesion\n    'contact_t2_t2': 16.0,  # high homo-adhesion -> engulfed\n}, core=core)\nstate = proc.initial_state()\nresult = proc.update({}, interval=1000)  # advance 1000 MCS","note":"Requires a conda/pixi environment (cc3d is not pip-installable) rather than the plain uv venv other wrappers use."},"relates_to":["process-bigraph — runtime the wrapper is built on","viva-yalla — both are agent/lattice-based multicellular morphogenesis simulators (Potts vs pairwise-force ABM)","viva-idynomics2 — both are individual/lattice-based population models bridged via a heavy external engine"]},"pbg-idynomics2":{"name":"pbg-idynomics2","one_liner":"Process-bigraph wrapper driving the real iDynoMiCS-2 Java biofilm IBM through JPype, no mock, JVM-per-process.","underlying":{"tool":"iDynoMiCS 2.0","kind":"Individual-based model (IBM) of microbial biofilms","url":"https://github.com/kreft/iDynoMiCS-2"},"concepts":["IDynoMiCS2Process — Process bridging idynomics.Simulator into the JVM via JPype","protocol_path — required config pointing at an iDynoMiCS XML protocol file","delta vs overwrite ports — average_concentrations/population emit deltas (composable), time is overwrite (absolute clock)","JAR caching — first run downloads the release zip to ~/.cache/pbg-idynomics2/, override via PBG_IDYNOMICS2_JAR","single-simulator-per-process — JVM cannot be cleanly restarted, a JPype/OpenJDK constraint"],"example":{"title":"Composite document wiring IDynoMiCS2Process","lang":"python","code":"document = {\n  \"idynomics\": {\n    \"_type\": \"process\", \"address\": \"local:IDynoMiCS2Process\",\n    \"config\": {\"protocol_path\": \"/abs/path/simple.xml\",\n               \"compartment\": \"biofilm-compartment\",\n               \"solutes\": [\"solute\", \"oxygen\"]},\n    \"interval\": 180.0,\n    \"outputs\": {\"average_concentrations\": [\"stores\", \"average_concentrations\"],\n                \"population\": [\"stores\", \"population\"]},\n  },\n}","note":"external_concentrations is pushed absolute into EnvironmentContainer.setAllConcentration each step; outputs come back as deltas."},"relates_to":["process-bigraph — runtime the wrapper is built on","viva-compucell3d — both bridge a heavyweight lattice/agent-based simulator engine (JVM vs CC3D)","viva-yalla — both wrap external agent-based morphology engines with real-vs-reproduction tradeoffs"]},"pbg-yalla":{"name":"pbg-yalla","one_liner":"Process-bigraph wrapper for ya||a's CUDA pairwise-force morphogenesis ABM, with a NumPy reproduction fallback for non-GPU hosts.","underlying":{"tool":"ya||a (yalla)","kind":"Pairwise agent-based model for morphogenesis, header-only C++/CUDA","url":"https://github.com/germannp/yalla"},"concepts":["YallaProcess — generates a parametrized .cu file, compiles with nvcc (content-addressed cache), runs the GPU binary each step","YallaReproductionProcess — clean-room vectorized NumPy re-implementation, same force abstraction + Euler substepping","YallaCudaUnavailable — raised with guidance when no GPU/nvcc present; never silently substitutes the reproduction","force_kernels — spring, differential_adhesion, relu kernels shared conceptually between both processes","pbg_yalla.summary — shared scalar output-port signature (n_cells, gyration_radius, sorting_score, ...) so real and reproduction are swappable"],"example":{"title":"Runs-anywhere composite (NumPy reproduction)","lang":"python","code":"core = register_yalla()          # registers both processes + emitter + viz\ndoc = make_yalla_document(\n    n_cells=200, force_kernel='differential_adhesion',\n    n_types=2, dt=0.01, interval=0.5, wall_radius=2.5,\n)\nsim = Composite({'state': doc}, core=core)\nsim.run(25.0)\nprint(sim.state['stores']['type_radial_spread'])","note":"The real YallaProcess needs an NVIDIA GPU + nvcc (e.g. Colab or a rental GPU host); the demo report runs the reproduction instead."},"relates_to":["process-bigraph — runtime the wrapper is built on","viva-compucell3d — both are multicellular/morphogenesis ABMs (pairwise-force vs cellular Potts)","viva-idynomics2 — shares the real-engine-vs-reproduction bridging pattern for a heavy external simulator"]},"pbg-oxidizeme":{"name":"pbg-oxidizeme","one_liner":"Process-bigraph Step bridging OxidizeME, a genome-scale E. coli ME-model with ROS damage/repair, for v2ecoli's cell-side interface contract.","underlying":{"tool":"OxidizeME (built on COBRAme / iJL1678b-ME)","kind":"Genome-scale ME-model (metabolism + macromolecular expression) with reactive-oxygen-species damage/repair","url":"https://github.com/SBRG/oxidizeme"},"concepts":["OxidizeMEStep — a Step (not Process) since ME-LP solves are single-shot optimizations, not time-stepped","strict vs non-strict mode — strict requires the real cobrame/ecolime/qminospy stack; non-strict returns a labelled empty solution (solver_status='upstream_missing', NaN scalars) for dashboard scaffolding","mu_fixed bisection — solves fixed-μ LP if set, else bisects for μ_max","cell-side interface contract — port names/types match v2ecoli's multiscale-bioprocess contract for drop-in substitutability","qMINOS dependency — extended-precision solver required for the ill-scaled ME-LP, obtained from Stanford, not pip-installable"],"example":{"title":"Non-strict scaffolding mode (no solver installed)","lang":"python","code":"step = OxidizeMEStep(config={\"strict\": False}, core=core)\nout = step.update(state)\n# out[\"solver_status\"] == \"upstream_missing\"\n# out[\"mu\"] is NaN -- we don't fake science","note":"The real bridge (strict=True) requires a pickled StressME model plus the Python-2.7-era cobrame/ecolime/qminospy stack, typically via the SBRG Docker image."},"relates_to":["process-bigraph — runtime the wrapper is built on","viva-comets — both wrap constraint-based FBA/ME-model optimization as pbg components","v2ecoli — OxidizeMEStep conforms to v2ecoli's cell-side interface contract as a candidate-future engine"]},"pbg-bioreactordesign":{"name":"pbg-bioreactordesign","one_liner":"Process-bigraph wrapper implementing a 0D bioreactor model using BioReactorDesign's mass-transfer correlations (kLa, Henry's law, Monod growth).","underlying":{"tool":"BioReactorDesign (BiRD)","kind":"Bioreactor physics correlations toolkit (mass transfer, gas-liquid equilibrium, CFD reactor design)","url":"https://github.com/NatLabRockies/BioReactorDesign"},"concepts":["BiRDReactorProcess — time-driven Process, scipy RK45 ODE solver, hours as time unit","Higbie penetration theory — computes volumetric mass-transfer coefficient kLa","Wilke-Chang correlation — liquid diffusivity for gas-liquid transfer","reactor_type — bubble_column, stirred_tank, or airlift geometry selection","MonodCellProcess / BiRDTransportProcess — additional processes alongside BiRDReactorProcess in the same package"],"example":{"title":"Bubble-column fermentation composite","lang":"python","code":"doc = make_reactor_document(\n    reactor_type='bubble_column', volume_L=20.0,\n    gas_flow_rate_Lpm=2.0, temperature_K=310.15,\n    initial_biomass_gL=0.5, max_growth_rate_per_h=0.7,\n    interval=0.5,\n)\nsim = Composite({'state': doc}, core=core)\nsim.run(12.0)  # 12 hours","note":"Output ports (dissolved_o2, biomass, kla_o2, ...) are all overwrite[float], reflecting the ODE solver's absolute-state semantics."},"relates_to":["process-bigraph — runtime the wrapper is built on","viva-comets — both feed metabolic/growth dynamics that could sit inside a fed-batch bioprocess composite","v2ecoli — a candidate reactor-scale environment process for multiscale-bioprocess composites"]},"pbg-composite-nfsim-caspule":{"name":"pbg-composite-nfsim-caspule","one_liner":"Process-bigraph composite handing matter from CASPULE bond-aware MD into NFSim rule-based kinetics via a configurable ObservableDetector Step.","underlying":null,"concepts":["ObservableDetector — Step watching CASPULE's bond network, matching cluster/atom rules, crediting each match as an NFSim molecule","DetectorRule — YAML-configured rule: bond_type_cluster or atom_type selector plus min/max size and remove_from_caspule","species pool store — bare map[float] where detector additions and NFSim deltas compose non-spatially","atoms_to_remove action store — detector tells CASPULE which matched atom IDs to delete next step","WIRING table — single source of truth mapping spatial pass-through, action, species-pool, and thermo-sink ports to stores","build_document / build_core — lower-level builders assembling the four-file (pbg.json/.in/.bngl/.yaml) bundle into a Composite"],"example":{"title":"Run the dimer coupling bundle from the CLI","lang":"bash","code":"python -m pbg_composite_nfsim_caspule examples/composite_dimer.pbg.json\n# final time: 5.0  CASPULE atoms(end): 0  bonds(end): 0\n# NFSim species: {'Dimer': 12.0, 'Active': 88.0}","note":"The runner resolves the .in/.bngl/.yaml input files relative to the .pbg.json and runs 5 lj-time-units."},"relates_to":["pbg-caspule — supplies the spatial bond-aware MD (modified LAMMPS) source process the detector reads from","pbg-nfsim — supplies the non-spatial rule-based (NFSim/BioNetGen) kinetics process fed by detected molecules","process-bigraph — provides the Step/Composite engine wiring CASPULE, detector, and NFSim through shared stores","spatio-flux — sibling reference composite showing the same compose-through-typed-stores pattern"]},"pbg-membrane-actin-composite":{"name":"pbg-membrane-actin-composite","one_liner":"Closed-loop Brownian-ratchet composite wiring pbg-mem3dg membrane mechanics to pbg-readdy actin reaction-diffusion via a bidirectional coupler.","underlying":null,"concepts":["BrownianRatchetCoupler — Process computing the actin-membrane contact gap and publishing wall_z + osmotic_strength_offset back-channels","wall_z back-channel — coupler confines ReaDDy particles below the tracked membrane; membrane lifts, wall lifts (the ratchet)","osmotic_strength_offset back-channel — coupler bulges the Mem3DG membrane proportionally to instantaneous contact force","boundary-condition staircase — three composite rungs: fixed, rigid-movable (Peskin 1993), flexible Mem3DG boundary","rebuild-on-change pattern — upstream wrappers snapshot state, drop, and rebuild the simulator when a back-channel input changes","WIRING table — pass-through and closed-loop rows over actin/membrane/coupling/control stores, no adapters or stubs needed"],"example":{"title":"Closed-loop wiring rows (control back-channels)","lang":"python","code":"WIRING = [\n  {'producer': 'ReaDDyProcess.positions',   'consumer': 'BrownianRatchetCoupler.actin_positions', 'store': ['actin','positions']},\n  {'producer': 'Mem3DGProcess.vertex_positions','consumer': 'BrownianRatchetCoupler.membrane_vertices','store': ['membrane','vertex_positions']},\n  {'producer': 'BrownianRatchetCoupler.wall_z','consumer': 'ReaDDyProcess.wall_z','store': ['control','wall_z']},\n  {'producer': 'BrownianRatchetCoupler.osmotic_strength_offset','consumer': 'Mem3DGProcess.osmotic_strength_offset','store': ['control','osmotic_strength_offset']},\n]","note":"Two forward reads plus two closed-loop back-channels form the actin-pushes / membrane-bulges ratchet loop."},"relates_to":["pbg-mem3dg — the lipid-membrane mechanics (pymem3dg) half of the loop, extended with an osmotic_strength_offset input port","pbg-readdy — the particle-based actin reaction-diffusion (ReaDDy) half, extended with a wall_z input port","process-bigraph — provides the Process/Composite engine and typed ports the coupler wires across","vivarium-dashboard — renders the investigation report with per-section expert feedback for this composite","pbg-composite-nfsim-caspule — sibling two-simulator composite using the same shared-store coupling discipline"]},"spatio-flux":{"name":"spatio-flux","one_liner":"The paper's reference app: composes dFBA, Monod kinetics, spatial diffusion-advection, particle dynamics, and graph rewrites into multiscale simulations.","underlying":null,"concepts":["DynamicFBA / SpatialDFBA / ShardedDFBA — cobra/HiGHS dynamic flux-balance metabolism, single-cell, on-lattice (COMETS-style), and sharded","DiffusionAdvection — spatial field transport Process with per-molecule Dirichlet/Neumann/periodic boundary conditions","MonodKinetics — Monod substrate-uptake kinetics Process as a lightweight alternative to full dFBA","BrownianMovement / PymunkParticleMovement — Brownian and Newtonian (pymunk physics) particle motion processes","ParticleExchange / ParticleDivision / ManageBoundaries — particle-field mass exchange, mass-threshold division, and boundary graph-rewrites","@composite_generator — decorated functions (spatioflux_reference_demo, comets, community-dFBA) registered for the dashboard"],"example":{"title":"Reference demo composite generator","lang":"python","code":"@composite_generator(\n    name=\"spatioflux_reference_demo\",\n    description=\"Newtonian particles + particle-field exchange + internal multi-dFBA + Monod/diffusion fields + division\",\n    parameters={\"bounds\": {...}, \"n_bins\": {...}, \"n_particles\": {\"type\": \"int\", \"default\": 1}},\n)\ndef spatioflux_reference_demo(core=None, *, bounds=SQUARE_BOUNDS, n_bins=SQUARE_BINS, n_particles=1):\n    ...  # couples fields, diffusion-advection, particle exchange, per-particle dFBA","note":"Processes couple through shared typed field/particle stores, not direct calls; 19 such scenarios form the test suite."},"relates_to":["process-bigraph — the framework whose composition engine and typed interfaces spatio-flux is the worked example for","pbg-superpowers — supplies the @composite_generator convention and build_generator the dashboard discovers composites through","bigraph-viz — renders the process-bigraph structure diagrams shown per scenario in the report","v2ecoli — downstream consumer: imports spatio_flux.processes.particles (via viva-munk) for physics-environment cells","vivarium-workbench — serves the read-only workbench browsing the 19-study investigation graph"]},"v2ecoli":{"name":"v2ecoli","one_liner":"Covert-lab whole-cell E. coli (vEcoli) rebuilt as composable process-bigraph processes and a research workspace of investigations and studies.","underlying":null,"concepts":["ecoli_baseline — 55-process partitioned requester/allocator/evolver whole-cell composite, the vEcoli-parity reference architecture","gene-expression processes — TranscriptInitiation/Elongation, PolypeptideInitiation/Elongation, RNA/protein degradation, complexation, equilibrium","chromosome processes — ChromosomeReplication, ChromosomeInitiation, ChromosomeStructure for replication dynamics","Metabolism — tFBA (parsimony) metabolism, with an experimental Millard-2017 kinetic-ODE + LQR (PDMP) variant swap","EcoliWCM bridge — Process holding an internal Composite, embedding many cells in a 2D pymunk colony with division at ~702 fg","ParCa pipeline — nine-Step parameter-calculation composite building sim_data, shipped pre-computed to skip the ~70 min rebuild"],"example":{"title":"Build and advance the baseline whole cell","lang":"python","code":"import v2ecoli\ncomposite = v2ecoli.build_composite(\"ecoli_baseline\", seed=0, cache_dir=\"out/cache\")\ncomposite.update({}, 60.0)   # advance 60 simulated seconds\n\n# or run a full multigen workflow from the CLI:\n# v2ecoli-workflow --config v2ecoli/configs/two_generations.json","note":"The same processes rewire into baseline, colony, parca, and millard_pdmp_baseline architectures via one build_composite call."},"relates_to":["vEcoli — the upstream Covert-lab whole-cell model whose biology and ParCa v2ecoli reimplements on process-bigraph","pbg-parsimony — supplies the parsimonious/tFBA metabolism solver the baseline metabolism process uses","spatio-flux / viva-munk — supply the pymunk particle physics the EcoliWCM colony environment embeds cells in","pbg-superpowers — provides the composite_generator registry, workspace, and dashboard tooling v2ecoli is built on","pbg-emitters — supplies the Parquet and XArray emitters v2ecoli registers for workflow output"]},"process-bigraph":{"name":"process-bigraph","one_liner":"Compositional runtime and protocol that schedules interoperable Processes over typed shared state, merging their emitted deltas across heterogeneous timescales.","underlying":null,"role":"Runtime & protocol","concepts":["Process — executable component with typed input/output ports; subclasses implement update(state, interval) returning a delta, never mutating state directly","Step — Open edge that runs once when its inputs change (dataflow node), the base class emitters and visualizations subclass","Composite — the execution engine; itself a Process, it schedules processes/steps, wires ports to stores, and merges deltas","Emitter — observational Step recording state to a backend; RAMEmitter, ConsoleEmitter, JSONEmitter live in process_bigraph.emitter","typed deltas — processes emit updates merged by the runtime via bigraph-schema apply, unifying numerical updates with structural rewrites","emitter_from_wires / gather_emitter_results — helpers to attach an emitter to a composite and retrieve recorded trajectories"],"example":{"title":"A Process emits a delta, not a mutation","lang":"python","code":"from process_bigraph import Process\n\nclass Grow(Process):\n    config_schema = {'rate': {'_type': 'float', '_default': 0.01}}\n    def inputs(self):\n        return {'mass': 'float'}\n    def outputs(self):\n        return {'mass': 'float'}\n    def update(self, state, interval):\n        return {'mass': state['mass'] * self.config['rate'] * interval}","note":"update() returns a typed delta on the 'mass' output port; the Composite merges it into the shared store."},"relates_to":["bigraph-schema — provides the type system; a Composite's stores are typed by it and deltas are merged via its apply operator","pbg-emitters — adds heavy-dependency emitter Steps (SQLite, Parquet) beyond the zero-dependency built-ins here","vivarium-workbench — serves and runs Composites authored against this runtime"]},"bigraph-schema":{"name":"bigraph-schema","one_liner":"Serializable, extensible type system for compositional modeling: a compact schema language plus the Core that infers, validates, serializes, and applies typed updates.","underlying":null,"role":"Type system","concepts":["Core — central registry and engine; register_type/register_link plus infer, check, fill, serialize, deserialize, and apply over schema+state","schema / state — every store carries a schema ('_type' + defaults) describing the hierarchical data it holds","apply — type-directed update operator; each type defines how an update merges into state, so deltas compose by type","Edge / ProcessContract — the typed port/interface abstraction that process-bigraph's Processes and Steps build on","BASE_TYPES / parse — built-in types and the compact type-expression parser (e.g. 'map[float]', 'tree[float]')","units — Quantity and Number._units give wire-level unit conversion between typed ports"],"example":{"title":"Register types and apply a typed update","lang":"python","code":"from bigraph_schema import Core\n\ncore = Core()\nschema = {'mass': 'float'}\nstate = core.fill(schema, {'mass': 1.0})\nupdated = core.apply(schema, state, {'mass': 0.5})\n# updated == {'mass': 1.5}  -- float's apply adds the delta","note":"apply is type-directed: the 'float' type defines addition as its merge, so deltas of that type accumulate."},"relates_to":["process-bigraph — its runtime imports allocate_core and types the whole composite through this Core","pbg-emitters — emitter contracts are expressed as this library's typed Edge/contract abstraction","vivarium-workbench — reads workspace .pbg/schemas validators derived from these type definitions"]},"vivarium-workbench":{"name":"vivarium-workbench","one_liner":"FastAPI web UI over a process-bigraph workspace: browse the registry and composites, author and run studies/investigations, and serve rendered reports.","underlying":null,"role":"Web UI","concepts":["Workspace — a directory with workspace.yaml the server points at; every dashboard action commits to a git branch for a full audit trail","Study — canonical 8-section research unit (Purpose, Build, Simulations, Readouts, Tests, ...) moving through Design->Build->Simulate->Evaluate->Decide","Investigation — DAG grouping of studies into a research arc, rendered on a canvas","Detached run model — an endpoint writes a run-request JSON and spawns 'run-composite' as a detached subprocess; results land in studies/<slug>/runs.db","Three planes — one codebase, three configs by env var: local authoring, remote sms-api compute backend, public read-only published bundle","loom explorer — embedded bigraph-loom state-tree view of a composite, served at /loom-explore"],"example":{"title":"Serve a workspace","lang":"bash","code":"pip install vivarium-workbench\ncd my-workspace          # a dir containing workspace.yaml\nvivarium-workbench serve --workspace .\n# or export a public read-only static bundle:\nvivarium-workbench-publish --workspace . --out ./bundle","note":"serve renders the SPA and hosts ~178 /api/* routes; publish strips mutating routes into a self-contained static bundle."},"relates_to":["process-bigraph — runs the workspace's Composites and renders their emitted results","viva-superpowers — the Claude Code plugin whose /viva-* skills drive this dashboard's HTTP API","bigraph-schema — reads the workspace's .pbg/schemas validators to catch malformed YAML at save time","pbg-emitters — runs write to runs.db / parquet via emitters wired into the composites"]},"viva-superpowers":{"name":"viva-superpowers","one_liner":"Claude Code plugin of 14 /viva-* skills that scaffold the mechanical parts of compositional modeling — wrap, compose, study, run, visualize — driving the workbench.","underlying":null,"role":"AI tooling","concepts":["/viva-workspace — scaffold a process-bigraph research workspace (standalone, on an upstream repo, or in-place)","/viva-expert — wrap a real simulator as a typed Process/Step, or compose multiple wrapped simulators into a Composite","/viva-study — full CRUD over studies by lifecycle phase (baselines, variants, interventions, runs, conclusions)","/viva-run — run a catalog composite for N steps and report emitted observables via the dashboard API","/viva-viz — generate an interactive Visualization Step into the workspace package from a natural-language description","/viva-workbench — start/stop/open the vivarium-workbench server every dashboard-driving skill depends on"],"example":{"title":"Install the plugin and scaffold a first model","lang":"bash","code":"/plugin marketplace add vivarium-collective/viva-superpowers\n/plugin install viva-superpowers\n/reload-plugins\npip install viva-superpowers\n# then, in natural language, Claude routes to the skills:\n/viva-workspace demo\n/viva-workbench start","note":"You describe biology in plain language; Claude invokes the right /viva-* skill and the dashboard reflects the change."},"relates_to":["vivarium-workbench — the skills read from and write to this dashboard's HTTP API","process-bigraph — /viva-expert authors typed Processes/Composites against this runtime's protocol","bigraph-schema — wrapped processes declare typed ports using this schema language","viva-template — /viva-workspace clones this scaffold to create a workspace"]},"pbg-emitters":{"name":"pbg-emitters","one_liner":"Reusable heavy-dependency emitters for process-bigraph composites — observational Steps that record simulation state to SQLite or Parquet backends, kept out of the core.","underlying":null,"role":"Emitters","concepts":["SQLiteEmitter — emitter Step writing one row per tick into a single .db file (stdlib sqlite3, [sqlite] extra)","ParquetEmitter — emitter Step writing a Hive-partitioned Parquet dataset with batched writes ([parquet] extra: duckdb, polars, pyarrow)","Emitter as observational Step — emitters subclass process_bigraph's Step, wired into a Composite to snapshot declared state paths","EmitterContract — typed contract (contract_for / register_contract) describing what an emitter records","reader helpers — create_duckdb_conn, read_stacked_columns, named_idx re-exported for querying Parquet run datasets","out-of-tree split — keeps process-bigraph lean; the zero-dependency RAM/Console/JSON emitters stay in process_bigraph.emitter"],"example":{"title":"Wire a backend emitter into a composite","lang":"python","code":"from pbg_emitters import SQLiteEmitter, ParquetEmitter\nfrom process_bigraph.emitter import emitter_from_wires\n\n# attach as a Step inside a process-bigraph Composite\nspec = emitter_from_wires(wires, address='local:SQLiteEmitter')","note":"The emitter is a Step addressed by name; it records state each tick to its backend as the composite runs."},"relates_to":["process-bigraph — its emitters subclass Step and complement the built-in emitters in process_bigraph.emitter","bigraph-schema — emitter contracts are expressed with this library's typed contract/Edge abstraction","vivarium-workbench — study runs persist through these emitters into runs.db / parquet the dashboard reads"]}}/*__ENRICH__*/;
+
+/* scale-band taxonomy (small -> large) */
+const BANDS = {
+  mol:  {label:"Molecular & structural", css:"--b-mol", bg:"--b-mol-bg", blurb:"Atoms, particles, membranes and filaments — MD, coarse-grained, particle and reaction–diffusion solvers."},
+  rxn:  {label:"Reaction networks",      css:"--b-rxn", bg:"--b-rxn-bg", blurb:"Chemical kinetics and signalling — SBML/ODE, rule-based and stochastic reaction systems."},
+  flux: {label:"Metabolism & flux",      css:"--b-flux",bg:"--b-flux-bg",blurb:"Constraint-based flux and metabolic networks — FBA, dynamic FBA, ME-models."},
+  cell: {label:"Whole cell",             css:"--b-cell",bg:"--b-cell-bg",blurb:"Every process of a single cell wired into one dividing composite."},
+  multi:{label:"Multicellular & spatial",css:"--b-multi",bg:"--b-multi-bg",blurb:"Populations, tissue, biofilms and bioreactors — agent-based, multicellular and spatial ecosystems."},
+  util: {label:"Framework & utility",    css:"--b-util",bg:"--b-util-bg",blurb:"Shared infrastructure — emitters, corpora and cross-cutting composites."}
+};
+const BAND_ORDER = ["mol","rxn","flux","cell","multi","util"];
+
+/* tag -> band, with priority (last wins for multi-tag repos via BAND_ORDER pick) */
+const TAG_BAND = {
+  "md":"mol","coarse-grained":"mol","membrane":"mol","particle":"mol","cytoskeleton":"mol","lammps":"mol",
+  "sbml":"rxn","ode":"rxn","rule-based":"rxn","reaction-diffusion":"mol","kinetics":"rxn","pde":"mol","stochastic":"rxn",
+  "fba":"flux","metabolism":"flux",
+  "whole-cell":"cell","ecoli":"cell",
+  "multicellular":"multi","agent-based":"multi","morphogenesis":"multi","spatial":"multi","microbial":"multi","bioreactor":"multi"
+};
+/* explicit overrides for untagged / ambiguous repos */
+const NAME_BAND = {
+  "pbg-emitters":"util","pbg-biomodels":"rxn","pbg-biomodels-bundle":"rxn","Viva-munk":"multi",
+  "pbg-idynomics2":"multi","pbg-reactive-system":"rxn","pbg-oxidizeme":"flux","v2ecoli":"cell"
+};
+function bandOf(r){
+  if(NAME_BAND[r.name]) return NAME_BAND[r.name];
+  const bands = (r.tags||[]).map(t=>TAG_BAND[t]).filter(Boolean);
+  if(!bands.length) return "util";
+  // pick the largest scale present (highest index in BAND_ORDER, excluding util)
+  let best="rxn",bi=-1;
+  bands.forEach(b=>{const i=BAND_ORDER.indexOf(b); if(i>bi){bi=i;best=b;}});
+  return best;
+}
+const isComposite = r => (r.tags||[]).includes("composite") || /composite/i.test(r.name);
+ECO.repos.forEach(r=>{ r._band = bandOf(r); });
+
+/* core engine repos (the substrate — not in the wrapped registry) */
+const CORE = [
+  {name:"bigraph-schema", pkg:"bigraph-schema", role:"Type system", icon:"◈",
+   desc:"A serializable type schema for compositional, multiscale modeling — a compact language for hierarchical data structures with schema inference, normalization, serialization, and physical units (Quantity). The foundation every store is validated against."},
+  {name:"process-bigraph", pkg:"process-bigraph", role:"Runtime & protocol", icon:"▬",
+   desc:"The compositional runtime and protocol: Process interfaces, typed shared stores, Composites, and orchestration across heterogeneous timescales — including dynamic structure (division, workflows, graph rewrites). The execution core of Vivarium 2.0."},
+  {name:"vivarium-workbench", pkg:"vivarium-workbench", role:"Web UI", icon:"🖥",
+   desc:"The web UI over a workspace: browse composites, run studies, inspect state-trees, render visualizations, and serve reports. One codebase in three modes — local, remote sms-api backend, or published read-only."},
+  {name:"viva-superpowers", pkg:"viva-superpowers", role:"AI tooling", icon:"🤖",
+   desc:"A Claude Code plugin — 14 /viva-* skills that scaffold the mechanical parts of compositional modeling. You describe biology in plain language; the agent writes the typed Process, composite, workspace, study, and figure code."}
+];
+
+/* study lifecycle */
+const PHASES = [
+  {n:"01",name:"Design",arrow:"the spec",produces:"Produces: the question, conditions, readouts, behavior_tests, assumptions",
+   body:"Write what the study asks and how it will be judged before any code runs — the question, the baseline and variants, the observables (readouts) and the behavior_tests that will grade them.",
+   skills:["/viva-study new","/viva-investigation new","fill-overview"]},
+  {n:"02",name:"Build",arrow:"the code",produces:"Produces: Process classes, listeners, composites that make the spec runnable",
+   body:"Make the spec executable against the workspace's simulator — wrap the tool as a typed Process, add listeners, calibrate sim_data. This is where a viva-<tool> wrapper is written or reused.",
+   skills:["/viva-expert","/viva-expert --lightweight"]},
+  {n:"03",name:"Simulate",arrow:"the runs",produces:"Produces: runs.db populated with trajectories",
+   body:"Run the composite for N steps on each condition. The engine schedules processes, merges deltas, and streams observables to the study's own runs.db via the chosen emitter.",
+   skills:["/viva-run","run-baseline","run-variant"]},
+  {n:"04",name:"Evaluate",arrow:"the verdict",produces:"Produces: PASS/FAIL/SKIP test outcomes, rendered figures, report card",
+   body:"Grade the runs. behavior_tests become PASS/FAIL/SKIP pills derived from the latest run's outcome; visualizations render to viz/<name>.html; a report card scores the claim against literature anchors.",
+   skills:["Tests tab","/viva-viz","/viva-report"]},
+  {n:"05",name:"Decide",arrow:"the conclusion",produces:"Produces: the conclusion — what we learned + next steps",
+   body:"Turn the verdict into a conclusion: what the evidence supports, where it fell short, and what the next study should ask. Investigations aggregate these into a cumulative argument.",
+   skills:["set-conclusion","/viva-harden-investigation"]}
+];
+
+/* glossary */
+const GLOSS = [
+  ["Bigraph","Two graphs over the same nodes: a place graph (nesting) and a link graph (wiring). Vivarium makes it executable."],
+  ["Store","A typed, schema-validated slot of hierarchical state. Processes read from and write to stores — never to each other."],
+  ["Process","An executable component with input/output ports. Emits typed deltas from update(); never mutates state directly."],
+  ["Step","A process that runs to completion within a single update rather than integrating over time — a calculation or transform (e.g. a ParCa fit, a report card)."],
+  ["Composite","An encapsulated sub-simulation — its own stores and processes — that is itself a process, so models nest without limit."],
+  ["Typed delta","The change a process returns. The runtime merges deltas into stores, unifying numerical updates and structural rewrites."],
+  ["Emitter","Where recorded observables go — SQLite, Parquet, or RAM. Swappable without touching the model."],
+  ["Study","One question of one model: a composite + config turned into a verdict, figure, and report card. Lives in studies/<slug>/study.yaml."],
+  ["Behavior test","An expectation graded PASS/FAIL/SKIP from the latest run's recorded outcome — the unit of a study's verdict."],
+  ["Report card","A scored evaluation of a study's biological claim against literature anchors — the reviewer-facing evidence."],
+  ["Investigation","A set of studies building a cumulative argument under one research question; a template with one open site per member."],
+  ["Template & trigger","A study/investigation is a process-bigraph template with open sites. trigger() does pull-or-compute: fill a site from a cached artifact, or compute it."],
+  ["Pull-or-compute","Run a study, or continue from a cached upstream: open results compute, filled results are read, non-ancestors are pruned."],
+  ["ParCa","Parameter calculation — the expensive fit that produces sim_data for the whole-cell model, cached and pulled by downstream studies."],
+  ["Workspace","A directory with workspace.yaml + a package of processes and composites — the unit the workbench serves."],
+  ["Content address","A hash over a study's inputs used to locate its cached result in .pbg/artifacts/<hash>/, enabling reuse across runs."]
+];
+
+/* ===================== RENDER: stats ===================== */
+(function(){
+  const agg={processes:0,steps:0,composites:0,studies:0,investigations:0};
+  ECO.repos.forEach(r=>{for(const k in agg){agg[k]+=(r.counts&&r.counts[k])||0;}});
+  const cells=[
+    [ECO.n_repos||ECO.repos.length,"repositories"],[agg.processes,"processes"],[agg.steps,"steps"],
+    [agg.composites,"composites"],[agg.studies,"studies"],[agg.investigations,"investigations"]
+  ];
+  document.getElementById('stats').innerHTML=cells.map(c=>
+    `<div class="stat"><b>${c[0]}</b><span>${c[1]}</span></div>`).join('');
+  // flagship
+  const v=ECO.repos.find(r=>r.name==='v2ecoli');
+  if(v){const c=v.counts||{};
+    document.getElementById('flagshipStats').innerHTML=
+      [['processes',c.processes],['steps',c.steps],['composites',c.composites],['studies',c.studies],['investigations',c.investigations]]
+      .map(x=>`<div class="artbox"><div class="n">${x[1]||0}</div><div class="l">${x[0]}</div></div>`).join('');
+  }
+})();
+
+/* ===================== RENDER: core repos ===================== */
+document.getElementById('coreRepos').innerHTML = CORE.map((c,i)=>`
+  <div class="card corerepo clickable" data-core="${c.name}" role="button" tabindex="0" aria-label="${c.name} details">
+    <div class="idx">core / ${i+1}</div>
+    <h4><span style="font-size:19px">${c.icon}</span> ${c.name}</h4>
+    <div class="pill" style="margin:2px 0 9px">${c.role}</div>
+    <p>${c.desc}</p>
+    <div style="margin-top:12px"><span class="tag-pkg">pip install ${c.pkg}</span></div>
+    <div class="more">concepts · example ↗</div>
+  </div>`).join('');
+document.querySelectorAll('#coreRepos .corerepo').forEach(el=>{
+  const open=e=>{ if(e.target.closest('a'))return; openRepoByName(el.dataset.core); };
+  el.addEventListener('click',open);
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();open(e);} });
+});
+
+/* ===================== RENDER: lifecycle ===================== */
+const pipe=document.getElementById('pipe'), phaseDetail=document.getElementById('phaseDetail');
+pipe.innerHTML=PHASES.map((p,i)=>`
+  <div class="phase${i===0?' active':''}" data-i="${i}" role="button" tabindex="0" aria-label="${p.name} phase">
+    <div class="ph-top"><div class="num">${p.n}</div><div class="pname">${p.name}</div>
+    <div class="parrow">→ ${p.arrow}</div></div>
+  </div>`).join('');
+function showPhase(i){
+  document.querySelectorAll('.phase').forEach(el=>el.classList.toggle('active',+el.dataset.i===i));
+  const p=PHASES[i];
+  phaseDetail.innerHTML=`<h4>${p.n} · ${p.name}</h4><div class="produces">${p.produces}</div>
+    <p style="color:var(--muted);font-size:14.5px;margin:0;max-width:78ch">${p.body}</p>
+    <div class="skills">${p.skills.map(s=>`<span class="skilltag">${s}</span>`).join('')}</div>`;
+}
+pipe.querySelectorAll('.phase').forEach(el=>{
+  const i=+el.dataset.i;
+  el.addEventListener('click',()=>showPhase(i));
+  el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showPhase(i);}});
+});
+showPhase(0);
+
+/* ===================== RENDER: scale ladder ===================== */
+const ladder=document.getElementById('ladder');
+ladder.innerHTML=BAND_ORDER.map(b=>{
+  const meta=BANDS[b];
+  const repos=ECO.repos.filter(r=>r._band===b).sort((a,z)=>a.display.localeCompare(z.display));
+  if(!repos.length) return '';
+  return `<div class="rung" style="--bc:var(${meta.css});--bcbg:var(${meta.bg})">
+    <div class="scale-name"><span>${b==='mol'?'smallest':b==='multi'?'largest':' '}</span>${meta.label}
+      <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted);max-width:24ch">${meta.blurb}</span></div>
+    <div class="chips">${repos.map(r=>`<button class="chip" data-name="${r.name}">${r.display}</button>`).join('')}</div>
+  </div>`;
+}).join('');
+ladder.addEventListener('click',e=>{const c=e.target.closest('.chip'); if(c) openRepoByName(c.dataset.name);});
+
+/* ===================== RENDER: catalog ===================== */
+const catGrid=document.getElementById('catGrid'), catCount=document.getElementById('catCount'),
+      catSearch=document.getElementById('catSearch'), catFilters=document.getElementById('catFilters');
+let activeBand=null;
+catFilters.innerHTML=`<button class="filt on" data-band="" >All</button>`+BAND_ORDER.map(b=>{
+  const m=BANDS[b];
+  return `<button class="filt" data-band="${b}" style="--fbg:var(${m.bg})"><span class="swatch" style="background:var(${m.css})"></span>${m.label}</button>`;
+}).join('');
+function repoCard(r){
+  const m=BANDS[r._band], c=r.counts||{};
+  const comp=isComposite(r)?`<span title="composite" style="color:var(--living)">◈</span>`:'';
+  return `<button class="repo" data-name="${r.name}" style="--bc:var(${m.css})">
+    <div class="rtop">
+      <div class="rname">${r.display} ${comp}</div>
+      <div class="rband">${m.label}</div>
+      <div class="rdesc">${r.desc||'A process-bigraph wrapper.'}</div>
+    </div>
+    <div class="rfoot">
+      <span><b>${c.processes||0}</b> proc</span>
+      <span><b>${c.steps||0}</b> steps</span>
+      <span><b>${c.composites||0}</b> comp</span>
+      ${c.studies?`<span><b>${c.studies}</b> studies</span>`:`<span class="z">0 studies</span>`}
+    </div>
+  </button>`;
+}
+function renderCatalog(){
+  const q=(catSearch.value||'').toLowerCase().trim();
+  let rows=ECO.repos.slice().sort((a,z)=>a.display.localeCompare(z.display));
+  if(activeBand) rows=rows.filter(r=>r._band===activeBand);
+  if(q) rows=rows.filter(r=>{
+    const hay=[r.display,r.name,r.desc,(r.tags||[]).join(' '),
+      (r.processes||[]).join(' '),(r.steps||[]).join(' '),(r.composites||[]).join(' '),(r.studies||[]).join(' ')].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  catGrid.innerHTML=rows.length?rows.map(repoCard).join(''):`<p style="color:var(--muted)">No simulators match “${q}”.</p>`;
+  catCount.textContent=`${rows.length} of ${ECO.repos.length} repositories`;
+}
+catSearch.addEventListener('input',renderCatalog);
+catFilters.addEventListener('click',e=>{
+  const b=e.target.closest('.filt'); if(!b)return;
+  catFilters.querySelectorAll('.filt').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); activeBand=b.dataset.band||null; renderCatalog();
+});
+catGrid.addEventListener('click',e=>{const c=e.target.closest('.repo'); if(c) openRepoByName(c.dataset.name);});
+renderCatalog();
+
+/* ===================== MODAL ===================== */
+const modal=document.getElementById('modal');
+const CORE_BY_NAME=Object.fromEntries(CORE.map(c=>[c.name,c]));
+function escHtml(s){return String(s).replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x]));}
+function resolveRepo(token){
+  token=String(token||'').trim().replace(/[`'"]/g,'');
+  let hit=ECO.repos.find(r=>r.display===token||r.name===token);
+  if(hit) return hit.name;
+  if(CORE_BY_NAME[token]) return token;
+  const stem=token.replace(/^(viva-|pbg-)/i,'').toLowerCase();
+  if(!stem) return null;
+  hit=ECO.repos.find(r=>r.display.replace(/^viva-/i,'').toLowerCase()===stem||r.name.replace(/^pbg-/i,'').toLowerCase()===stem);
+  if(hit) return hit.name;
+  const core=Object.keys(CORE_BY_NAME).find(k=>k.toLowerCase()===token.toLowerCase()||k.replace(/^(viva-|pbg-)/i,'').toLowerCase()===stem);
+  return core||null;
+}
+function relChip(rt){
+  const parts=String(rt).split(/\s+[—–-]\s+/);
+  const head=parts[0].trim(), rest=parts.slice(1).join(' — ').trim();
+  const tgt=resolveRepo(head);
+  const inner=`<b>${escHtml(head)}</b>${rest?' — '+escHtml(rest):''}`;
+  return tgt?`<span class="relchip link" data-rel="${tgt}">${inner}</span>`:`<span class="relchip">${inner}</span>`;
+}
+function enrichHTML(name){
+  const e=ENRICH[name]; if(!e) return '';
+  let h='<div class="enr">';
+  if(e.underlying&&e.underlying.tool){const u=e.underlying;
+    h+=`<div class="underlying">wraps <b>${escHtml(u.tool)}</b>${u.kind?' · '+escHtml(u.kind):''}${u.url?` · <a href="${escHtml(u.url)}" target="_blank" rel="noopener">upstream ↗</a>`:''}</div>`;}
+  if(e.concepts&&e.concepts.length){
+    h+=`<h5>Major concepts</h5><ul class="concepts">${e.concepts.map(c=>{const p=String(c).split(/\s+—\s+/);
+      return p.length>1?`<li><b>${escHtml(p[0])}</b> — ${escHtml(p.slice(1).join(' — '))}</li>`:`<li>${escHtml(c)}</li>`;}).join('')}</ul>`;}
+  if(e.example&&e.example.code){const ex=e.example;
+    h+=`<h5>Example</h5><div class="ex"><div class="ex-t"><span>${escHtml(ex.title||'example')}</span><span>${escHtml(ex.lang||'')}</span></div><pre>${escHtml(ex.code)}</pre></div>${ex.note?`<div class="ex-note">${escHtml(ex.note)}</div>`:''}`;}
+  if(e.relates_to&&e.relates_to.length){
+    h+=`<h5>Related repos</h5><div class="rel">${e.relates_to.map(relChip).join('')}</div>`;}
+  return h+'</div>';
+}
+function openEntry(r,isCore){
+  const m=isCore?{label:'Core · '+(r.role||'engine'),css:'--wire'}:BANDS[r._band];
+  const c=r.counts||null, e=ENRICH[r.name];
+  document.querySelector('.modal-head').style.setProperty('--bc',`var(${m.css})`);
+  document.getElementById('modalBand').textContent=isCore?m.label:(m.label+(isComposite(r)?' · composite':''));
+  document.getElementById('modalTitle').textContent=r.display;
+  document.getElementById('modalDesc').textContent=(e&&e.one_liner)?e.one_liner:(r.desc||'A process-bigraph component.');
+  const artBox=(n,l)=>`<div class="artbox"><div class="n">${n||0}</div><div class="l">${l}</div></div>`;
+  const artList=(title,items)=> (items&&items.length)?
+    `<div class="artlist"><h5>${title} · ${items.length}</h5><div class="items">${items.map(i=>`<span>${escHtml(i)}</span>`).join('')}</div></div>`:'';
+  document.getElementById('modalBody').innerHTML=`
+    ${enrichHTML(r.name)}
+    ${c?`<div class="enr-arth">Declared artifacts</div><div class="artgrid">
+      ${artBox(c.processes,'processes')}${artBox(c.steps,'steps')}${artBox(c.composites,'composites')}
+      ${artBox(c.studies,'studies')}${artBox(c.investigations,'investigations')}
+    </div>`:''}
+    ${(r.tags&&r.tags.length)?`<div style="margin:12px 0 2px">${r.tags.map(t=>`<span class="tag-pkg" style="margin:0 6px 6px 0;color:var(--muted)">#${escHtml(t)}</span>`).join('')}</div>`:''}
+    ${artList('Processes',r.processes)}
+    ${artList('Steps',r.steps)}
+    ${artList('Composites',r.composites)}
+    ${artList('Studies',r.studies)}
+    ${artList('Investigations',r.investigations)}
+    <div class="modal-foot" style="padding-left:0;padding-right:0">
+      <a class="btn" href="${r.homepage}" target="_blank" rel="noopener">View repository ↗</a>
+    </div>`;
+  document.getElementById('modalBody').querySelectorAll('.relchip.link').forEach(ch=>ch.onclick=()=>openRepoByName(ch.dataset.rel));
+  document.getElementById('modalBody').parentElement.scrollTop=0;
+  modal.classList.add('open');
+  document.getElementById('modalClose').focus();
+}
+function openRepoByName(name){
+  const r=ECO.repos.find(x=>x.name===name||x.display===name);
+  if(r) return openEntry(r,false);
+  const cc=CORE_BY_NAME[name];
+  if(cc) return openEntry({name:cc.name,display:cc.name,desc:cc.desc,
+    homepage:'https://github.com/vivarium-collective/'+cc.name,tags:[],role:cc.role},true);
+}
+function closeModal(){modal.classList.remove('open');}
+document.getElementById('modalClose').addEventListener('click',closeModal);
+document.getElementById('modalBg').addEventListener('click',closeModal);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+/* body-level repo links (rosetta table, prose) open the enriched modal */
+document.addEventListener('click',e=>{const b=e.target.closest('[data-open]'); if(b){e.preventDefault(); openRepoByName(b.dataset.open);}});
+
+/* ===================== GLOSSARY ===================== */
+document.getElementById('gloss').innerHTML=GLOSS.map(g=>
+  `<div class="gterm"><dt>${g[0]}</dt><dd>${g[1]}</dd></div>`).join('');
+
+/* ===================== THEME TOGGLE ===================== */
+const root=document.documentElement, themeBtn=document.getElementById('themeBtn'),
+      themeIcon=document.getElementById('themeIcon'), themeTxt=document.getElementById('themeTxt');
+function sysDark(){return window.matchMedia('(prefers-color-scheme:dark)').matches;}
+function curDark(){const t=root.getAttribute('data-theme'); return t?t==='dark':sysDark();}
+function paintTheme(){const d=curDark(); themeIcon.textContent=d?'☾':'☀'; themeTxt.textContent=d?'Dark':'Light';}
+themeBtn.addEventListener('click',()=>{root.setAttribute('data-theme',curDark()?'light':'dark'); paintTheme(); drawHero();});
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(!root.getAttribute('data-theme')){paintTheme();drawHero();}});
+paintTheme();
+
+/* ===================== MOBILE MENU ===================== */
+const side=document.getElementById('side'), scrim=document.getElementById('scrim');
+document.getElementById('menuBtn').addEventListener('click',()=>{side.classList.add('open');scrim.classList.add('open');});
+scrim.addEventListener('click',()=>{side.classList.remove('open');scrim.classList.remove('open');});
+document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>{side.classList.remove('open');scrim.classList.remove('open');}));
+
+/* ===================== SCROLLSPY ===================== */
+const navLinks=[...document.querySelectorAll('#nav a')];
+const secIds=navLinks.map(a=>a.getAttribute('href').slice(1));
+const spy=new IntersectionObserver(entries=>{
+  entries.forEach(en=>{if(en.isIntersecting){
+    const id=en.target.id; navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));
+  }});
+},{rootMargin:'-45% 0px -50% 0px',threshold:0});
+secIds.forEach(id=>{const el=document.getElementById(id); if(el)spy.observe(el);});
+
+/* ===================== INTERACTIVE: GROW STEPPER ===================== */
+(function(){
+  const rangeEl=document.getElementById('rateRange'), rateVal=document.getElementById('rateVal'),
+        rateEcho=document.getElementById('rateEcho'),
+        roStep=document.getElementById('roStep'), roMass=document.getElementById('roMass'), roDelta=document.getElementById('roDelta'),
+        plot=document.getElementById('growPlot');
+  let mass=1.0, step=0, rate=0.10, hist=[1.0];
+  const INTERVAL=1.0, MAXPTS=21;
+  function rateFromRange(){rate=(+rangeEl.value)/100; rateVal.textContent=rate.toFixed(2); rateEcho.textContent=rate.toFixed(2);}
+  function reset(){mass=1.0;step=0;hist=[1.0];draw();update(true);}
+  function doStep(){
+    const delta = mass*rate*INTERVAL;   // exactly the Grow.update() return
+    mass += delta; step++;
+    hist.push(mass); if(hist.length>MAXPTS) hist.shift();
+    roDelta.textContent='+'+delta.toFixed(3);
+    roDelta.classList.add('delta-flash'); setTimeout(()=>roDelta.classList.remove('delta-flash'),140);
+    update();
+  }
+  function update(silent){
+    roStep.textContent=step; roMass.textContent=mass.toFixed(3);
+    drawPlot();
+    // pulse the store node
+    const store=document.getElementById('storeNode');
+    if(store&&!silent){store.style.transition='none';store.setAttribute('r','24');
+      requestAnimationFrame(()=>{store.style.transition='r .3s';store.setAttribute('r','20');});}
+  }
+  // diagram
+  document.getElementById('stepDiagram').innerHTML=`
+   <svg viewBox="0 0 340 200" role="img" aria-label="Grow process wired to a mass store">
+     <path class="wire" id="wireOut" d="M118 78 C 180 78, 180 100, 236 100"/>
+     <path class="wire" id="wireIn"  d="M236 118 C 180 150, 150 150, 118 118" stroke-dasharray="5 4"/>
+     <rect class="node-proc" x="26" y="62" width="92" height="56" rx="12"/>
+     <text class="nlabel" x="72" y="86" text-anchor="middle">Grow</text>
+     <text class="nsub"   x="72" y="102" text-anchor="middle">update()</text>
+     <circle class="port" cx="118" cy="78" r="4"/>
+     <circle class="port-in" cx="118" cy="118" r="4"/>
+     <circle class="node-store" id="storeNode" cx="256" cy="100" r="20"/>
+     <text class="nlabel" x="256" y="96" text-anchor="middle">mass</text>
+     <text class="nsub"   x="256" y="140" text-anchor="middle">store</text>
+     <text class="nsub" x="176" y="72" text-anchor="middle" fill="var(--wire-2)">Δ out</text>
+     <text class="nsub" x="168" y="152" text-anchor="middle" fill="var(--b-cell)">read in</text>
+   </svg>`;
+  function drawPlot(){
+    const dpr=window.devicePixelRatio||1, W=plot.clientWidth, H=170;
+    plot.width=W*dpr; plot.height=H*dpr;
+    const g=plot.getContext('2d'); g.scale(dpr,dpr);
+    g.clearRect(0,0,W,H);
+    const css=getComputedStyle(document.body);
+    const wire=css.getPropertyValue('--wire').trim(), line=css.getPropertyValue('--line').trim(),
+          faint=css.getPropertyValue('--faint').trim(), glow=css.getPropertyValue('--wire-glow').trim();
+    const pad=26, x0=pad, x1=W-10, y0=H-20, y1=12;
+    const maxV=Math.max(2, Math.max(...hist)*1.05), n=MAXPTS-1;
+    // grid
+    g.strokeStyle=line; g.lineWidth=1; g.globalAlpha=.7;
+    for(let i=0;i<=4;i++){const y=y1+(y0-y1)*i/4; g.beginPath();g.moveTo(x0,y);g.lineTo(x1,y);g.stroke();}
+    g.globalAlpha=1;
+    g.fillStyle=faint; g.font='9px ui-monospace,monospace'; g.textAlign='right';
+    g.fillText(maxV.toFixed(1),x0-4,y1+8); g.fillText('1.0',x0-4,y0);
+    g.textAlign='center'; g.fillText('steps →',(x0+x1)/2,H-4);
+    const X=i=>x0+(x1-x0)*i/n, Y=v=>y0-(y0-y1)*(v-0)/(maxV-0);
+    // area
+    g.beginPath(); g.moveTo(X(0),y0);
+    hist.forEach((v,i)=>g.lineTo(X(i),Y(v))); g.lineTo(X(hist.length-1),y0); g.closePath();
+    const grad=g.createLinearGradient(0,y1,0,y0); grad.addColorStop(0,glow+'55'); grad.addColorStop(1,glow+'00');
+    g.fillStyle=grad; g.fill();
+    // line
+    g.beginPath(); hist.forEach((v,i)=>{i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v));});
+    g.strokeStyle=wire; g.lineWidth=2.4; g.lineJoin='round'; g.stroke();
+    // endpoint
+    const lx=X(hist.length-1), ly=Y(hist[hist.length-1]);
+    g.beginPath(); g.arc(lx,ly,4,0,7); g.fillStyle=wire; g.fill();
+    g.beginPath(); g.arc(lx,ly,7,0,7); g.strokeStyle=glow; g.lineWidth=1.5; g.stroke();
+  }
+  function draw(){drawPlot();}
+  rangeEl.addEventListener('input',rateFromRange);
+  document.getElementById('stepBtn').addEventListener('click',doStep);
+  document.getElementById('resetBtn').addEventListener('click',reset);
+  document.getElementById('runBtn').addEventListener('click',()=>{
+    const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    if(reduce){for(let i=0;i<20;i++)doStep();return;}
+    let k=0; const iv=setInterval(()=>{doStep(); if(++k>=20)clearInterval(iv);},90);
+  });
+  rateFromRange(); update(true);
+  window.addEventListener('resize',()=>drawPlot());
+})();
+
+/* ===================== INTERACTIVE: HERO BIGRAPH CANVAS ===================== */
+let drawHero;
+(function(){
+  const cv=document.getElementById('heroCanvas'); const g=cv.getContext('2d');
+  let W,H,dpr,t=0,raf=null;
+  const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // graph: processes (rects) + stores (circles), positions in 0..1
+  const stores=[
+    {id:'s1',x:.50,y:.30,r:16,c:'cell'},{id:'s2',x:.72,y:.52,r:14,c:'flux'},
+    {id:'s3',x:.40,y:.66,r:18,c:'multi'},{id:'s4',x:.24,y:.42,r:13,c:'rxn'}
+  ];
+  const procs=[
+    {id:'p1',x:.24,y:.20,w:.20,h:.11,label:'Metabolism'},
+    {id:'p2',x:.66,y:.24,w:.20,h:.11,label:'Transcription'},
+    {id:'p3',x:.60,y:.72,w:.22,h:.11,label:'Division'},
+    {id:'p4',x:.10,y:.62,w:.18,h:.11,label:'Diffusion'}
+  ];
+  const wires=[
+    ['p1','s4'],['p1','s1'],['p2','s1'],['p2','s2'],['p3','s3'],['p3','s2'],['p4','s3'],['p4','s4'],['s1','s3']
+  ];
+  const bandCol={cell:'--b-cell',flux:'--b-flux',multi:'--b-multi',rxn:'--b-rxn',mol:'--b-mol'};
+  function pt(id){const s=stores.find(x=>x.id===id); if(s)return{x:s.x,y:s.y}; const p=procs.find(x=>x.id===id); return{x:p.x+p.w/2,y:p.y+p.h/2};}
+  function resize(){dpr=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;}
+  function col(v){return getComputedStyle(document.body).getPropertyValue(v).trim();}
+  function frame(){
+    resize(); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    const X=v=>v*W, Y=v=>v*H;
+    const wire=col('--wire'), glow=col('--wire-glow'), line=col('--line'),
+          panel=col('--panel'), panel2=col('--panel-2'), ink=col('--ink'), faint=col('--faint');
+    // wires
+    wires.forEach((w,i)=>{
+      const a=pt(w[0]),b=pt(w[1]);
+      const mx=(a.x+b.x)/2, cy=(a.y+b.y)/2 - .06;
+      g.beginPath(); g.moveTo(X(a.x),Y(a.y)); g.quadraticCurveTo(X(mx),Y(cy),X(b.x),Y(b.y));
+      g.strokeStyle=line; g.lineWidth=1.6; g.globalAlpha=.9; g.stroke(); g.globalAlpha=1;
+      // flowing delta particle
+      if(!reduce){
+        const prog=((t/120)+i*0.13)%1;
+        const qx=(1-prog)*(1-prog)*a.x+2*(1-prog)*prog*mx+prog*prog*b.x;
+        const qy=(1-prog)*(1-prog)*a.y+2*(1-prog)*prog*cy+prog*prog*b.y;
+        g.beginPath(); g.arc(X(qx),Y(qy),3.2,0,7); g.fillStyle=glow; g.shadowColor=glow; g.shadowBlur=10; g.fill(); g.shadowBlur=0;
+      }
+    });
+    // stores
+    stores.forEach(s=>{
+      const c=col(bandCol[s.c]||'--wire');
+      const pulse=reduce?0:Math.sin(t/40+s.x*10)*1.5;
+      g.beginPath(); g.arc(X(s.x),Y(s.y),s.r+pulse,0,7);
+      g.fillStyle=panel2; g.fill(); g.lineWidth=2.2; g.strokeStyle=c; g.stroke();
+      g.beginPath(); g.arc(X(s.x),Y(s.y),3,0,7); g.fillStyle=c; g.fill();
+    });
+    // processes
+    g.font='600 12px ui-monospace,monospace'; g.textAlign='center'; g.textBaseline='middle';
+    procs.forEach(p=>{
+      const x=X(p.x),y=Y(p.y),w=X(p.w),h=Y(p.h),r=9;
+      g.beginPath();
+      g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
+      g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
+      g.fillStyle=panel; g.fill(); g.lineWidth=2; g.strokeStyle=wire; g.stroke();
+      // ports
+      g.fillStyle=wire;
+      g.beginPath(); g.arc(x+w,y+h/2,3,0,7); g.fill();
+      g.beginPath(); g.arc(x,y+h/2,3,0,7); g.fill();
+      g.fillStyle=ink; g.fillText(p.label,x+w/2,y+h/2);
+    });
+    // caption dot grid frame accent handled by CSS
+    t+=1;
+    if(!reduce) raf=requestAnimationFrame(frame);
+  }
+  drawHero=function(){ if(raf)cancelAnimationFrame(raf); frame(); };
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){ if(!reduce&&!raf) frame(); } else { if(raf){cancelAnimationFrame(raf);raf=null;} } });
+  },{threshold:.05});
+  io.observe(cv);
+  window.addEventListener('resize',()=>{resize(); if(reduce)frame();});
+  frame(); if(reduce){/* static single paint */}
+})();
+
+/* ===================== TEMPLATE FILLER (studies & investigations) ===================== */
+(function(){
+  const stage=document.getElementById('tmplStage'), narr=document.getElementById('tmplNarrate'),
+        modesEl=document.getElementById('tmplModes');
+  if(!stage) return;
+  let mode='study';
+
+  /* ---- STUDY: fixed analysis network, model = open site ---- */
+  const COMPOSITES=[
+    {id:'ecoli_baseline', cfg:'media = glucose'},
+    {id:'grow', cfg:'rate = 0.1'},
+    {id:'dynamic_fba', cfg:'model = iAF1260'}
+  ];
+  const study={model:null, ran:false};
+  function studySVG(){
+    const m=study.model;
+    const siteCls=m?'tsite-filled':'tsite-open', siteName=m?m.id:'model', siteSub=m?m.cfg:'site · open ◇';
+    const resCls=study.ran?'tres-filled':'tres-open', resSub=study.ran?'computed':'site · open';
+    return `<svg class="tmpl-svg" viewBox="0 0 600 168" role="img" aria-label="Study template diagram">
+      <text class="tsub" x="24" y="24" fill="var(--living)">◇ open site</text>
+      <text class="tsub" x="300" y="24" text-anchor="middle">— fixed analysis network —</text>
+      <path class="twire" d="M156 92 H196"/><path class="twire" d="M330 92 H370"/><path class="twire" d="M504 92 H532"/>
+      <rect class="${siteCls}" x="16" y="64" width="140" height="56" rx="12"/>
+      <text class="tlab" x="86" y="88" text-anchor="middle">${siteName}</text>
+      <text class="tsub" x="86" y="106" text-anchor="middle">${siteSub}</text>
+      <rect class="tnode" x="196" y="64" width="134" height="56" rx="12"/>
+      <text class="tlab" x="263" y="88" text-anchor="middle">Simulation</text><text class="tsub" x="263" y="106" text-anchor="middle">SimulationStep</text>
+      <rect class="tnode" x="370" y="64" width="134" height="56" rx="12"/>
+      <text class="tlab" x="437" y="88" text-anchor="middle">Analysis</text><text class="tsub" x="437" y="106" text-anchor="middle">readouts · tests</text>
+      <rect class="${resCls}" x="532" y="64" width="60" height="56" rx="12"/>
+      <text class="tlab" x="562" y="88" text-anchor="middle" font-size="11">results</text><text class="tsub" x="562" y="106" text-anchor="middle">${resSub}</text>
+      <circle class="tport" cx="156" cy="92" r="3.5"/><circle class="tport" cx="330" cy="92" r="3.5"/><circle class="tport" cx="504" cy="92" r="3.5"/>
+    </svg>
+    <div class="tmpl-ctrl">
+      <label>fill site</label>
+      <select id="tmplSel"><option value="">— open (choose a model) —</option>${COMPOSITES.map(c=>`<option value="${c.id}"${study.model&&study.model.id===c.id?' selected':''}>${c.id} · ${c.cfg}</option>`).join('')}</select>
+      <button class="btn primary" id="tmplRun"${study.model?'':' disabled style="opacity:.45;cursor:not-allowed"'}>▸ trigger()</button>
+      <button class="btn" id="tmplReset">↺ reset</button>
+    </div>`;
+  }
+  function studyNarr(){
+    if(!study.model) return `The analysis network — <b>simulation → readouts → tests</b> — is fixed. The <b style="color:var(--living)">model site is open</b> (◇): this is a <b>template</b>, not yet runnable.`;
+    if(!study.ran) return `Site filled with <b>${study.model.id}</b> (<code>${study.model.cfg}</code>). The template is now a <b>runnable composite</b> — this is <code>study.yaml</code>'s <code>composite</code> + <code>config</code>. Press <b>trigger()</b>.`;
+    return `<span class="compute">trigger()</span> ran the SimulationStep → the <b>results site is filled</b> and tests grade the run. Re-running now <span class="pull">pulls the cached result</span> instead of recomputing.`;
+  }
+  function mountStudy(){
+    stage.innerHTML=studySVG(); narr.innerHTML=studyNarr();
+    stage.querySelector('#tmplSel').onchange=e=>{study.model=COMPOSITES.find(x=>x.id===e.target.value)||null; study.ran=false; mountStudy();};
+    const run=stage.querySelector('#tmplRun'); if(run) run.onclick=()=>{ if(study.model){study.ran=true; mountStudy();} };
+    stage.querySelector('#tmplReset').onclick=()=>{study.model=null; study.ran=false; mountStudy();};
+  }
+
+  /* ---- INVESTIGATION: one open site per member; pull-or-compute ---- */
+  const MEMBERS=[
+    {id:'parca', filled:true},{id:'glucose_growth', filled:true},
+    {id:'succinate_growth', filled:true},{id:'acetate_growth', filled:false}
+  ];
+  const PREREQ={parca:[], glucose_growth:['parca'], succinate_growth:['parca'], acetate_growth:['parca']};
+  let target='succinate_growth';
+  function resolveInv(){
+    const anc=new Set(); (function walk(id){(PREREQ[id]||[]).forEach(p=>{if(!anc.has(p)){anc.add(p);walk(p);}});})(target);
+    return MEMBERS.map(m=>{
+      if(m.id===target) return {...m, verdict:'ADMIT · COMPUTE', cls:'compute', desc:'the target — computed this run'};
+      if(anc.has(m.id)) return m.filled
+        ? {...m, verdict:'ADMIT · PULL', cls:'pull', desc:'prerequisite filled → cached handle from .pbg/artifacts/‹hash›'}
+        : {...m, verdict:'ADMIT · COMPUTE', cls:'compute', desc:'prerequisite open → recomputed'};
+      return {...m, verdict:'PRUNE', cls:'prune', desc:'not on the target’s path → pruned from this run'};
+    });
+  }
+  function invHTML(){
+    const res=resolveInv(), byId=Object.fromEntries(res.map(r=>[r.id,r]));
+    return `<div style="font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-bottom:9px">click a member to fill / open its site · &nbsp;<label style="text-transform:none;color:var(--muted)">compute target:</label>
+      <select id="invTarget" style="font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer">
+        ${MEMBERS.map(m=>`<option value="${m.id}"${m.id===target?' selected':''}>${m.id}</option>`).join('')}</select></div>
+    <div class="members">${MEMBERS.map(m=>`
+      <button class="member${m.filled?' filled':''}${m.id===target?' target':''}" data-id="${m.id}">
+        <div class="mname"><span class="box"></span>${m.id}${m.id===target?' <span class="tgt">target</span>':''}</div>
+        <div class="mstate">${m.filled?'filled ◆':'open ◇'}</div>
+      </button>`).join('')}</div>
+    <div class="resolve">${res.map(r=>`<span class="rk">${r.id}</span><span class="rt ${r.cls}">${r.verdict}</span><span class="rd">${r.desc}</span>`).join('')}</div>`;
+  }
+  function invNarr(){
+    return `An investigation is a template with <b>one open site per member study</b>. <b style="color:var(--living)">Filling a member admits it</b>; leaving it open <span class="prune">prunes</span> it. For the target, <code>trigger()</code> does <b>pull-or-compute</b>: a filled prerequisite is <span class="pull">pulled from cache</span>, an open one is <span class="compute">computed</span>, and non-prerequisites are <span class="prune">pruned</span>.`;
+  }
+  function mountInv(){
+    stage.innerHTML=invHTML(); narr.innerHTML=invNarr();
+    stage.querySelectorAll('.member').forEach(b=>b.onclick=()=>{const m=MEMBERS.find(x=>x.id===b.dataset.id); m.filled=!m.filled; mountInv();});
+    stage.querySelector('#invTarget').onchange=e=>{target=e.target.value; mountInv();};
+  }
+
+  function render(){ mode==='study'?mountStudy():mountInv(); }
+  modesEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    mode=b.dataset.mode; modesEl.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); render();
+  });
+  render();
+})();
+
+/* ===================== LOOM EMBED (companion artifact, lazy iframe) ===================== */
+(function(){
+  const btn=document.getElementById('loomLoad'), host=document.getElementById('loomHost'), note=document.getElementById('loomNote');
+  const LOOM='loom.html';
+  if(!btn) return;
+  btn.addEventListener('click',()=>{
+    const f=document.createElement('iframe');
+    f.src=LOOM; f.title='bigraph-loom explorer'; f.setAttribute('loading','lazy'); f.setAttribute('allow','fullscreen');
+    f.style.cssText='width:100%;height:620px;border:0;display:block;background:var(--panel)';
+    host.innerHTML=''; host.style.minHeight='0'; host.appendChild(f);
+    note.innerHTML='Loom loads the <b>ecoli_baseline</b> composite on its own. If the frame stays blank, this context may block cross-embedding \u2014 <a href="'+LOOM+'" target="_blank" rel="noopener">open it in its own tab \u2197</a>.';
+  });
+})();
+</script>
