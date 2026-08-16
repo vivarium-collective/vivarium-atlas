@@ -4,7 +4,7 @@ An interactive map of the process-bigraph / Vivarium 2.0 software ecosystem — 
 formalism, the engine, studies & investigations, the Spatio-Flux worked example,
 an embedded bigraph-loom renderer, and a searchable catalog of every wrapped simulator.
 
-**Live:** https://eagmon.github.io/vivarium-atlas/
+**Live:** https://vivarium-collective.github.io/vivarium-atlas/
 
 Two static files, no build step:
 - `index.html` — the Atlas
